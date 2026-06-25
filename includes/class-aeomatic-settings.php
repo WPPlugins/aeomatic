@@ -44,7 +44,7 @@ class AEOMATIC_Settings {
 			'llms_txt'         => array(
 				'enabled'      => true,
 				'description'  => '',
-				'auto_include' => true, // include top posts/pages automatically
+				'auto_include' => true, // include all published posts and pages automatically
 				'extra_urls'   => '',   // newline-separated extra URLs
 			),
 			'crawlers'         => array(

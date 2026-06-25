@@ -106,12 +106,13 @@ settings_errors( 'aeomatic_messages' );
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Auto-include posts', 'aeomatic' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Auto-include content', 'aeomatic' ); ?></th>
 				<td>
 					<label>
 						<input type="checkbox" name="aeob[llms_txt][auto_include]" value="1" <?php checked( ! empty( $aeomatic_settings['llms_txt']['auto_include'] ) ); ?> />
-						<?php esc_html_e( 'Include 25 most recent posts in llms.txt', 'aeomatic' ); ?>
+						<?php esc_html_e( 'Include all published posts and pages in llms.txt', 'aeomatic' ); ?>
 					</label>
+					<p class="description"><?php esc_html_e( 'Lists every published page and post (grouped by type) in llms.txt, and serves their full text at /llms-full.txt.', 'aeomatic' ); ?></p>
 				</td>
 			</tr>
 			<tr>

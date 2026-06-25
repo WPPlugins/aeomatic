@@ -76,6 +76,9 @@ class AEOMATIC_Verification {
 		// 1. llms.txt
 		$checks[] = $this->check_llms_txt();
 
+		// 1b. llms-full.txt
+		$checks[] = $this->check_llms_full_txt();
+
 		// 2. robots.txt with AI bot directives
 		$checks[] = $this->check_robots_txt();
 
@@ -136,6 +139,44 @@ class AEOMATIC_Verification {
 		return $this->result( 'llms_txt', __( 'llms.txt endpoint', 'aeomatic' ), 'ok',
 			/* translators: 1: KB size 2: line count */
 			sprintf( __( 'Live and serving content (%1$s KB, %2$d lines). Click to view.', 'aeomatic' ), $kb, $line_count ),
+			$url, null );
+	}
+
+	private function check_llms_full_txt(): array {
+		$enabled = (bool) AEOMATIC_Settings::get( 'llms_txt', 'enabled' );
+		$url     = home_url( '/llms-full.txt' );
+
+		if ( ! $enabled ) {
+			return $this->result( 'llms_full_txt', __( 'llms-full.txt endpoint', 'aeomatic' ), 'off',
+				__( 'Disabled in settings. Enable llms.txt to also serve the full-content file.', 'aeomatic' ),
+				null, null );
+		}
+
+		$response = wp_remote_get( $url, array( 'timeout' => 8, 'redirection' => 2 ) );
+
+		if ( is_wp_error( $response ) ) {
+			return $this->result( 'llms_full_txt', __( 'llms-full.txt endpoint', 'aeomatic' ), 'fail',
+				/* translators: %s: error message */
+				sprintf( __( 'Could not reach %s.', 'aeomatic' ), esc_url( $url ) ),
+				$url, $response->get_error_message() );
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		$body = wp_remote_retrieve_body( $response );
+
+		if ( 200 !== $code ) {
+			return $this->result( 'llms_full_txt', __( 'llms-full.txt endpoint', 'aeomatic' ), 'fail',
+				/* translators: %d: HTTP status code */
+				sprintf( __( 'Endpoint returned HTTP %d. Visit Settings → Permalinks and click Save to refresh rewrite rules.', 'aeomatic' ), $code ),
+				$url, null );
+		}
+
+		$block_count = substr_count( $body, "\n## " );
+		$kb          = round( strlen( $body ) / 1024, 1 );
+
+		return $this->result( 'llms_full_txt', __( 'llms-full.txt endpoint', 'aeomatic' ), 'ok',
+			/* translators: 1: KB size 2: content block count */
+			sprintf( __( 'Live and serving full content (%1$s KB, %2$d content blocks). Click to view.', 'aeomatic' ), $kb, $block_count ),
 			$url, null );
 	}
 

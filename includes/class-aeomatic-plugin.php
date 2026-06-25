@@ -27,6 +27,10 @@ class AEOMATIC_Plugin {
 	private function __construct() {}
 
 	public function run(): void {
+		// Run any version-change upgrade routines (e.g. flush rewrites for
+		// new virtual endpoints) before modules register.
+		add_action( 'admin_init', array( $this, 'maybe_upgrade' ) );
+
 		// Initialise modules.
 		( new AEOMATIC_Schema() )->register();
 		( new AEOMATIC_LLMs_Txt() )->register();
@@ -41,5 +45,36 @@ class AEOMATIC_Plugin {
 		if ( is_admin() ) {
 			( new AEOMATIC_Admin() )->register();
 		}
+	}
+
+	/**
+	 * Detect a version change and run one-time upgrade steps.
+	 *
+	 * On 1.1.0 the /llms-full.txt endpoint was added, which needs a rewrite
+	 * flush. Comparing the stored version against the running version lets us
+	 * flush automatically on update without the user re-saving permalinks.
+	 */
+	public function maybe_upgrade(): void {
+		$stored = (string) AEOMATIC_Settings::get( '_meta', 'installed_version' );
+		if ( $stored === AEOMATIC_VERSION ) {
+			return;
+		}
+
+		AEOMATIC_LLMs_Txt::register_rewrites();
+		flush_rewrite_rules();
+
+		$all                                = AEOMATIC_Settings::all();
+		$all['_meta']['installed_version']  = AEOMATIC_VERSION;
+		update_option( AEOMATIC_OPTION_KEY, $all );
+
+		AEOMATIC_Activity::log(
+			'plugin_updated',
+			sprintf(
+				/* translators: 1: previous version, 2: new version */
+				__( 'AEOmatic updated from %1$s to %2$s. Rewrite rules refreshed for the /llms-full.txt endpoint.', 'aeomatic' ),
+				$stored ? $stored : '—',
+				AEOMATIC_VERSION
+			)
+		);
 	}
 }

@@ -112,8 +112,19 @@
 	grid-template-columns: 1fr 1fr 1fr;
 }
 
+.aeob-grid--4 {
+	grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+@media (max-width: 1200px) {
+	.aeob-grid--4 {
+		grid-template-columns: 1fr 1fr;
+	}
+}
+
 @media (max-width: 900px) {
-	.aeob-grid--3 {
+	.aeob-grid--3,
+	.aeob-grid--4 {
 		grid-template-columns: 1fr;
 	}
 }

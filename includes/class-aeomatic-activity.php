@@ -108,10 +108,11 @@ class AEOMATIC_Activity {
 			$stats[ $k ] = ( (int) ( $stats[ $k ] ?? 0 ) ) + $v;
 		}
 		return wp_parse_args( $stats, array(
-			'schema_renders' => 0,
-			'audits_run'     => 0,
-			'llms_serves'    => 0,
-			'updated_at'     => 0,
+			'schema_renders'   => 0,
+			'audits_run'       => 0,
+			'llms_serves'      => 0,
+			'llms_full_serves' => 0,
+			'updated_at'       => 0,
 		) );
 	}
 

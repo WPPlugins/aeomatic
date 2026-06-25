@@ -4,7 +4,7 @@ Tags: schema, seo, ai search, json-ld, llms.txt
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,8 +45,8 @@ Reads content from all major builders — Gutenberg, Elementor, Divi, Beaver Bui
 **WooCommerce integration**
 Product schema with price, availability, SKU, brand, aggregate ratings, and sale date — all auto-filled from WooCommerce, all editable.
 
-**llms.txt generator**
-Serves a virtual `/llms.txt` endpoint — an AI-friendly Markdown index of your site. Tells AI crawlers what your site is about, which pages are important, and links to your recent content. Follows the llmstxt.org specification.
+**llms.txt + llms-full.txt generator**
+Serves a virtual `/llms.txt` endpoint — an AI-friendly Markdown index of your site. Tells AI crawlers what your site is about, lists your key pages, a full Pages section, and every published post grouped by type. Follows the llmstxt.org specification. Also serves a companion `/llms-full.txt` endpoint containing the complete extracted text of every published page and post, one Markdown block per item — so AI engines can ingest your full content in a single fetch.
 
 **AI crawler control**
 Per-bot Allow/Disallow in your robots.txt for 17 AI crawlers: GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-Web, Claude-SearchBot, PerplexityBot, Perplexity-User, Google-Extended, anthropic-ai, CCBot, Bytespider, Amazonbot, Applebot-Extended, meta-externalagent, DeepSeekBot, Cohere-AI.
@@ -138,6 +138,16 @@ Yes. In the Gutenberg editor, open the AEOmatic — AI based Answer Engine Optim
 
 == Changelog ==
 
+= 1.1.0 =
+* New `/llms-full.txt` virtual endpoint — serves the complete extracted text of every published page and post, one Markdown `##` block per item, for full-content AI ingestion in a single fetch
+* llms.txt now includes a dedicated `## Pages` section listing all published pages
+* llms.txt now lists every published post per custom post type — the previous 25-item cap is removed (bound it with the `aeomatic_llms_max_items` filter on very large sites)
+* llms.txt header now includes a `Full content:` link pointing to /llms-full.txt
+* New "llms-full.txt requests served" counter on the "What did we do?" page, alongside the existing llms.txt counter
+* Live verification panel now checks the /llms-full.txt endpoint
+* Settings: the auto-include option now reads "Include all published posts and pages in llms.txt"
+* Rewrite rules now flush automatically on update so /llms-full.txt works without manually re-saving permalinks
+
 = 1.0.0 =
 * Initial public release
 * Visual schema editor in Gutenberg sidebar — auto-populates all fields from page content, every field editable
@@ -163,6 +173,9 @@ Yes. In the Gutenberg editor, open the AEOmatic — AI based Answer Engine Optim
 * All public custom post types auto-detected and supported
 
 == Upgrade Notice ==
+
+= 1.1.0 =
+Adds a /llms-full.txt full-content endpoint and lists all pages/posts in llms.txt. Rewrite rules refresh automatically on update; if /llms-full.txt shows a 404, go to Settings → Permalinks → Save Changes.
 
 = 1.0.0 =
 First public release. After activation, go to Settings → Permalinks → Save Changes to activate the /llms.txt endpoint.

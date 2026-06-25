@@ -24,7 +24,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 		<?php esc_html_e( 'Live proof of every change AEOmatic — AI based Answer Engine Optimization has made to your site. Every link below opens the actual file or page so you can verify it yourself.', 'aeomatic' ); ?>
 	</p>
 
-	<div class="aeob-grid aeob-grid--3">
+	<div class="aeob-grid aeob-grid--4">
 		<div class="aeob-stat">
 			<div class="aeob-stat__num"><?php echo esc_html( number_format_i18n( $aeomatic_stats['schema_renders'] ) ); ?></div>
 			<div class="aeob-stat__label"><?php esc_html_e( 'Schema blocks rendered', 'aeomatic' ); ?></div>
@@ -47,6 +47,13 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 				/* translators: %d: days active */
 				printf( esc_html__( 'Active for %d day(s). Counters reflect requests since last reset.', 'aeomatic' ), (int) $aeomatic_days_active );
 				?>
+			</div>
+		</div>
+		<div class="aeob-stat">
+			<div class="aeob-stat__num"><?php echo esc_html( number_format_i18n( $aeomatic_stats['llms_full_serves'] ) ); ?></div>
+			<div class="aeob-stat__label"><?php esc_html_e( 'llms-full.txt requests served', 'aeomatic' ); ?></div>
+			<div class="aeob-stat__hint">
+				<?php esc_html_e( 'Full-content file requests. AI engines fetch this for the complete text of every published page and post.', 'aeomatic' ); ?>
 			</div>
 		</div>
 	</div>
@@ -78,7 +85,15 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 				<a href="<?php echo esc_url( home_url( '/llms.txt' ) ); ?>" target="_blank" rel="noopener">
 					<?php echo esc_html( home_url( '/llms.txt' ) ); ?>
 				</a>
-				<p><?php esc_html_e( 'You should see a Markdown file listing your site name, key pages and recent posts.', 'aeomatic' ); ?></p>
+				<p><?php esc_html_e( 'You should see a Markdown file listing your site name, key pages, a Pages section, and your posts grouped by type. The header includes a "Full content" link.', 'aeomatic' ); ?></p>
+			</li>
+			<li>
+				<strong><?php esc_html_e( 'View your llms-full.txt', 'aeomatic' ); ?></strong>
+				—
+				<a href="<?php echo esc_url( home_url( '/llms-full.txt' ) ); ?>" target="_blank" rel="noopener">
+					<?php echo esc_html( home_url( '/llms-full.txt' ) ); ?>
+				</a>
+				<p><?php esc_html_e( 'You should see one Markdown ## block per published page and post, each with its URL and full extracted text.', 'aeomatic' ); ?></p>
 			</li>
 			<li>
 				<strong><?php esc_html_e( 'View your robots.txt', 'aeomatic' ); ?></strong>
