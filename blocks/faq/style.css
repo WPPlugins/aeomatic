@@ -1,0 +1,50 @@
+.aeob-faq {
+	margin: 1.5em 0;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.aeob-faq-item {
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	padding: 0;
+	background: #fff;
+	overflow: hidden;
+}
+
+.aeob-faq-item summary {
+	cursor: pointer;
+	padding: 14px 18px;
+	font-weight: 600;
+	font-size: 1.05em;
+	list-style: none;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.aeob-faq-item summary::after {
+	content: '+';
+	font-size: 1.4em;
+	color: #1f4e79;
+	transition: transform 0.2s ease;
+}
+
+.aeob-faq-item[open] summary::after {
+	content: '−';
+}
+
+.aeob-faq-item summary::-webkit-details-marker {
+	display: none;
+}
+
+.aeob-faq-answer {
+	padding: 0 18px 16px;
+	color: #444;
+	line-height: 1.6;
+}
+
+.aeob-faq-answer p {
+	margin: 0 0 0.5em;
+}

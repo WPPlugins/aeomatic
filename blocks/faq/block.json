@@ -1,0 +1,19 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "aeomatic/faq",
+	"title": "AEO FAQ",
+	"category": "text",
+	"description": "Frequently asked questions block. Auto-generates FAQ schema for AI search engines.",
+	"icon": "format-chat",
+	"keywords": ["faq", "questions", "aeo", "schema"],
+	"textdomain": "aeomatic",
+	"supports": {
+		"align": ["wide", "full"],
+		"html": false,
+		"reusable": true
+	},
+	"editorScript": "file:./index.js",
+	"editorStyle": "file:./editor.css",
+	"style": "file:./style.css"
+}
