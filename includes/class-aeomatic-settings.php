@@ -67,6 +67,9 @@ class AEOMATIC_Settings {
 				'DeepSeekBot'        => true,
 				'Cohere-AI'          => false,
 			),
+			'robots'           => array(
+				'block_pdfs' => false,
+			),
 			'audit'            => array(
 				'enabled'   => true,
 				'min_words' => 800,
@@ -172,6 +175,10 @@ class AEOMATIC_Settings {
 			foreach ( $out['crawlers'] as $bot => $_ ) {
 				$out['crawlers'][ $bot ] = ! empty( $input['crawlers'][ $bot ] );
 			}
+		}
+
+		if ( isset( $input['robots'] ) && is_array( $input['robots'] ) ) {
+			$out['robots']['block_pdfs'] = ! empty( $input['robots']['block_pdfs'] );
 		}
 
 		if ( isset( $input['audit'] ) && is_array( $input['audit'] ) ) {

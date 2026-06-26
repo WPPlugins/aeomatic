@@ -345,21 +345,75 @@ class AEOMATIC_Content_Extractor {
 		}
 	}
 
+	const ACF_CACHE_META = '_aeomatic_acf_text';
+
 	/**
-	 * Extract text from ACF fields. Walks all ACF field groups attached
-	 * to the post and collects values from text-type fields.
+	 * Extract text from ACF fields.
+	 *
+	 * Important: `get_field_objects()` seeds ACF's internal value store with
+	 * repeater sub-field instances (e.g. repeater_0_text). If this runs during
+	 * `wp_head` on a frontend render, the theme's later `have_rows()` call sees
+	 * the polluted state and renders duplicate repeater rows. To avoid that,
+	 * we cache the extracted text in post meta and only ever build the cache
+	 * outside of a live frontend render (save_post, admin, REST, CLI, cron).
 	 */
 	private static function extract_acf_fields( WP_Post $post ): string {
 		if ( ! function_exists( 'get_field_objects' ) ) {
 			return '';
 		}
+
+		$cached = get_post_meta( $post->ID, self::ACF_CACHE_META, true );
+		if ( is_string( $cached ) && '' !== $cached ) {
+			return $cached;
+		}
+
+		// Cache empty — only build it in a safe context. A live frontend
+		// render (wp_head) is not safe; return empty and let save_post fill it.
+		if ( ! self::is_safe_acf_context() ) {
+			return '';
+		}
+
+		return self::build_acf_cache( $post );
+	}
+
+	/**
+	 * Run get_field_objects() and persist the extracted text to post meta.
+	 * Returns the freshly built string.
+	 */
+	public static function build_acf_cache( WP_Post $post ): string {
+		if ( ! function_exists( 'get_field_objects' ) ) {
+			return '';
+		}
 		$fields = get_field_objects( $post->ID );
 		if ( empty( $fields ) || ! is_array( $fields ) ) {
+			update_post_meta( $post->ID, self::ACF_CACHE_META, '' );
 			return '';
 		}
 		$buf = array();
 		self::walk_acf_fields( $fields, $buf );
-		return implode( "\n", $buf );
+		$text = implode( "\n", $buf );
+		update_post_meta( $post->ID, self::ACF_CACHE_META, $text );
+		return $text;
+	}
+
+	/**
+	 * Contexts where it's safe to call get_field_objects() — i.e. not during a
+	 * live frontend page render where the theme will iterate ACF data after us.
+	 */
+	private static function is_safe_acf_context(): bool {
+		if ( is_admin() ) {
+			return true;
+		}
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return true;
+		}
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+			return true;
+		}
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return true;
+		}
+		return false;
 	}
 
 	private static function walk_acf_fields( array $fields, array &$buf ): void {

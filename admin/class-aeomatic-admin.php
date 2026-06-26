@@ -20,6 +20,7 @@ class AEOMATIC_Admin {
 		add_action( 'admin_menu',             array( $this, 'add_menu' ) );
 		add_action( 'admin_init',             array( $this, 'maybe_save' ) );
 		add_action( 'admin_init',             array( $this, 'maybe_dismiss_review' ) );
+		add_action( 'admin_init',             array( $this, 'maybe_snooze_review' ) );
 		add_action( 'admin_notices',          array( $this, 'maybe_show_review_notice' ) );
 		add_action( 'admin_enqueue_scripts',  array( $this, 'enqueue_assets' ) );
 		add_filter( 'plugin_action_links_' . AEOMATIC_BASENAME, array( $this, 'plugin_links' ) );
@@ -163,12 +164,41 @@ class AEOMATIC_Admin {
 	}
 
 	/**
-	 * Show a friendly review request notice after 7 days of use.
-	 * Only shown to admins, only in wp-admin, dismissed permanently on click.
+	 * Snooze the review notice for 14 days when the user clicks "Remind me later".
+	 */
+	public function maybe_snooze_review(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['aeomatic_snooze_review'] ) ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		update_option( 'aeomatic_review_snoozed_until', time() + ( 14 * DAY_IN_SECONDS ), false );
+		$redirect = remove_query_arg( 'aeomatic_snooze_review' );
+		wp_safe_redirect( $redirect );
+		exit;
+	}
+
+	/**
+	 * Show a review request notice once the user has had time and engagement with
+	 * the plugin:
+	 *   - 7 days since install, AND
+	 *   - at least 5 schema renders (proves the plugin is actually doing work).
+	 *
+	 * The notice can be snoozed for 14 days ("Remind me later") or dismissed
+	 * permanently ("Already did" / "Leave a review" / "×"). Snooze gives genuinely
+	 * interested users a second chance instead of forcing a hard yes/no.
 	 */
 	public function maybe_show_review_notice(): void {
-		// Already dismissed.
+		// Already dismissed permanently.
 		if ( get_option( 'aeomatic_review_dismissed' ) ) {
+			return;
+		}
+
+		// Snoozed — not yet time to re-show.
+		$snoozed_until = (int) get_option( 'aeomatic_review_snoozed_until', 0 );
+		if ( $snoozed_until && $snoozed_until > time() ) {
 			return;
 		}
 
@@ -177,15 +207,33 @@ class AEOMATIC_Admin {
 			return;
 		}
 
-		// Wait 7 days after install.
+		// Time gate: 7 days after install.
 		$installed_at = (int) AEOMATIC_Settings::get( '_meta', 'installed_at' );
 		if ( ! $installed_at || ( time() - $installed_at ) < 7 * DAY_IN_SECONDS ) {
 			return;
 		}
 
+		// Engagement gate: must have rendered schema at least 5 times. Avoids
+		// nagging users who installed but haven't actually benefited yet.
+		if ( class_exists( 'AEOMATIC_Activity' ) ) {
+			$stats   = AEOMATIC_Activity::get_stats();
+			$renders = (int) ( $stats['schema_renders'] ?? 0 );
+			if ( $renders < 5 ) {
+				return;
+			}
+		}
+
 		$review_url  = 'https://wordpress.org/support/plugin/aeomatic/reviews/#new-post';
 		$dismiss_url = add_query_arg( 'aeomatic_dismiss_review', '1' );
+		$snooze_url  = add_query_arg( 'aeomatic_snooze_review', '1' );
 
+		// Background-dismiss when the user clicks "Leave a review" — the link
+		// opens wp.org in a new tab via target="_blank"; this fetch silently
+		// records the dismiss without navigating the current admin page away.
+		$review_onclick = sprintf(
+			"fetch(%s,{credentials:'same-origin'}).catch(function(){});return true;",
+			wp_json_encode( esc_url_raw( $dismiss_url ) )
+		);
 		?>
 		<div class="notice notice-info aiaeo-review-notice" style="border-left-color:#5B3FFF; padding: 14px 16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
 			<img src="<?php echo esc_url( AEOMATIC_URL . 'assets/images/icon.svg' ); ?>" alt="" width="40" height="40" style="flex-shrink:0;">
@@ -203,8 +251,12 @@ class AEOMATIC_Admin {
 				   rel="noopener noreferrer"
 				   class="button button-primary"
 				   style="background:#5B3FFF; border-color:#5B3FFF; display:flex; align-items:center; gap:5px;"
-				   onclick="document.location='<?php echo esc_url( $dismiss_url ); ?>'">
+				   onclick="<?php echo esc_attr( $review_onclick ); ?>">
 					⭐ <?php esc_html_e( 'Leave a review', 'aeomatic' ); ?>
+				</a>
+				<a href="<?php echo esc_url( $snooze_url ); ?>"
+				   class="button button-secondary">
+					<?php esc_html_e( 'Remind me later', 'aeomatic' ); ?>
 				</a>
 				<a href="<?php echo esc_url( $dismiss_url ); ?>"
 				   class="button button-secondary">

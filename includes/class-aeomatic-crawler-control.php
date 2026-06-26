@@ -26,19 +26,32 @@ class AEOMATIC_Crawler_Control {
 	 * @param string $public  '1' if site is public.
 	 */
 	public function append_directives( string $output, string $public ): string {
-		$crawlers = AEOMATIC_Settings::get( 'crawlers' );
-		if ( empty( $crawlers ) ) {
+		$crawlers   = AEOMATIC_Settings::get( 'crawlers' );
+		$block_pdfs = (bool) AEOMATIC_Settings::get( 'robots', 'block_pdfs' );
+
+		if ( empty( $crawlers ) && ! $block_pdfs ) {
 			return $output;
 		}
 
 		$lines = array();
-		$lines[] = '';
-		$lines[] = '# AI crawler directives — managed by AEOmatic — AI based Answer Engine Optimization';
 
-		foreach ( $crawlers as $bot => $allowed ) {
-			$lines[] = 'User-agent: ' . $bot;
-			$lines[] = $allowed ? 'Allow: /' : 'Disallow: /';
+		if ( $block_pdfs ) {
 			$lines[] = '';
+			$lines[] = '# Block PDF files — managed by AEOmatic — AI based Answer Engine Optimization';
+			$lines[] = 'User-agent: *';
+			$lines[] = 'Disallow: /*.pdf$';
+			$lines[] = '';
+		}
+
+		if ( ! empty( $crawlers ) ) {
+			$lines[] = '';
+			$lines[] = '# AI crawler directives — managed by AEOmatic — AI based Answer Engine Optimization';
+
+			foreach ( $crawlers as $bot => $allowed ) {
+				$lines[] = 'User-agent: ' . $bot;
+				$lines[] = $allowed ? 'Allow: /' : 'Disallow: /';
+				$lines[] = '';
+			}
 		}
 
 		// Hint to llms.txt for compatible AI crawlers.

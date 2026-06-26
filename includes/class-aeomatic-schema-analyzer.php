@@ -89,23 +89,72 @@ class AEOMATIC_Schema_Analyzer {
 			return self::$request_cache[ $post->ID ];
 		}
 
+		// Read persisted analysis from post meta. This avoids re-running the
+		// full scoring (which calls ACF's get_field_objects) during wp_head
+		// on every frontend render — that side-effect was poisoning the
+		// theme's ACF row store and causing repeater rows to render as
+		// duplicates of row 0.
+		$persisted = get_post_meta( $post->ID, self::META_ANALYSIS, true );
+		if ( is_string( $persisted ) && '' !== $persisted ) {
+			$decoded = json_decode( $persisted, true );
+			if ( is_array( $decoded ) && isset( $decoded['type'] ) ) {
+				self::$request_cache[ $post->ID ] = $decoded;
+				return $decoded;
+			}
+		}
+
+		// No cached analysis. Only run the full algorithm in a safe context
+		// (admin, REST, cron, CLI) — never during a live frontend render.
+		if ( ! self::is_safe_analysis_context() ) {
+			$fallback = array(
+				'type'         => self::default_for_post_type( $post->post_type ),
+				'confidence'   => 20,
+				'reasons'      => array( __( 'Default — analysis cache empty; will be built on next save.', 'aeomatic' ) ),
+				'alternatives' => array(),
+				'source'       => 'default_pending',
+			);
+			self::$request_cache[ $post->ID ] = $fallback;
+			return $fallback;
+		}
+
 		$result = self::run_analysis( $post );
 
 		// Persist for request cache.
 		self::$request_cache[ $post->ID ] = $result;
 
-		// Persist to post meta so other pages can read cached analysis without re-running.
-		// inspector page load when the post hasn't changed).
+		// Persist to post meta so subsequent frontend renders read this cache.
 		update_post_meta( $post->ID, self::META_ANALYSIS, wp_json_encode( $result ) );
 
 		return $result;
 	}
 
 	/**
-	 * Invalidate the request cache for a given post (called on save/meta change).
+	 * Invalidate the request cache AND the persisted meta cache so the next
+	 * safe-context call rebuilds.
 	 */
 	public static function invalidate_cache( int $post_id ): void {
 		unset( self::$request_cache[ $post_id ] );
+		delete_post_meta( $post_id, self::META_ANALYSIS );
+	}
+
+	/**
+	 * Contexts where it's safe to call get_field_objects() — i.e. not during a
+	 * live frontend page render where the theme will iterate ACF data after us.
+	 */
+	private static function is_safe_analysis_context(): bool {
+		if ( is_admin() ) {
+			return true;
+		}
+		if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+			return true;
+		}
+		if ( defined( 'DOING_CRON' ) && DOING_CRON ) {
+			return true;
+		}
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			return true;
+		}
+		return false;
 	}
 
 	/**

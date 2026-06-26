@@ -160,6 +160,22 @@ settings_errors( 'aeomatic_messages' );
 			</tr>
 		</table>
 
+		<h2 class="title"><?php esc_html_e( 'robots.txt rules', 'aeomatic' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'Extra Disallow rules appended to robots.txt by AEOmatic.', 'aeomatic' ); ?>
+		</p>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Block PDF files', 'aeomatic' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="aeob[robots][block_pdfs]" value="1" <?php checked( ! empty( $aeomatic_settings['robots']['block_pdfs'] ) ); ?> />
+						<?php esc_html_e( 'Prevent crawlers from indexing PDF files (adds Disallow: /*.pdf$)', 'aeomatic' ); ?>
+					</label>
+				</td>
+			</tr>
+		</table>
+
 		<h2 class="title"><?php esc_html_e( 'AI crawler control', 'aeomatic' ); ?></h2>
 		<p class="description">
 			<?php esc_html_e( 'Choose which AI crawlers can access your site. Directives are added to your robots.txt automatically.', 'aeomatic' ); ?>

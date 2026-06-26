@@ -32,6 +32,9 @@ class AEOMATIC_Schema {
 		}
 		AEOMATIC_Schema_Builder::invalidate( $post_id );
 		AEOMATIC_Schema_Analyzer::invalidate_cache( $post_id );
+		// Rebuild the ACF text cache in a safe context so the frontend never
+		// has to call get_field_objects() during wp_head.
+		AEOMATIC_Content_Extractor::build_acf_cache( $post );
 	}
 
 	/**
@@ -42,6 +45,7 @@ class AEOMATIC_Schema {
 		// Don't invalidate on our own bookkeeping writes.
 		$skip_keys = array(
 			AEOMATIC_Schema_Builder::CACHE_META,
+			AEOMATIC_Content_Extractor::ACF_CACHE_META,
 			'_aeomatic_score',
 			'_aeomatic_score_breakdown',
 			'_edit_lock',

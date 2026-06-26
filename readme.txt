@@ -4,7 +4,7 @@ Tags: schema, seo, ai search, json-ld, llms.txt
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -138,6 +138,11 @@ Yes. In the Gutenberg editor, open the AEOmatic — AI based Answer Engine Optim
 
 == Changelog ==
 
+= 1.1.1 =
+* Fix: ACF repeater rows on the front-end no longer duplicate row-0's content. The schema analyzer was calling `get_field_objects()` during `wp_head`, which poisoned ACF's internal value store before the theme rendered the repeater. Analysis is now cached in post meta and only rebuilt in safe contexts (admin, REST, cron, CLI).
+* Fix: Online llms.txt validators no longer fail with "Failed to fetch". The `/llms.txt` and `/llms-full.txt` endpoints now send `Access-Control-Allow-Origin: *` so browser-based validators and AI clients can read the response cross-origin.
+* New: "Block PDF files" setting under **Settings → robots.txt rules**. When enabled, AEOmatic appends `User-agent: *` + `Disallow: /*.pdf$` to robots.txt so crawlers skip PDF files site-wide.
+
 = 1.1.0 =
 * New `/llms-full.txt` virtual endpoint — serves the complete extracted text of every published page and post, one Markdown `##` block per item, for full-content AI ingestion in a single fetch
 * llms.txt now includes a dedicated `## Pages` section listing all published pages
@@ -173,6 +178,9 @@ Yes. In the Gutenberg editor, open the AEOmatic — AI based Answer Engine Optim
 * All public custom post types auto-detected and supported
 
 == Upgrade Notice ==
+
+= 1.1.1 =
+Fixes an ACF repeater duplication bug on the front-end and a CORS issue that broke online llms.txt validators. Adds a one-click setting to block PDFs in robots.txt. After updating, save any post that uses ACF repeaters once to refresh the new caches.
 
 = 1.1.0 =
 Adds a /llms-full.txt full-content endpoint and lists all pages/posts in llms.txt. Rewrite rules refresh automatically on update; if /llms-full.txt shows a 404, go to Settings → Permalinks → Save Changes.

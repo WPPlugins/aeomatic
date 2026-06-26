@@ -14,6 +14,7 @@ delete_option( 'aeomatic_activity_log' );
 delete_option( 'aeomatic_stats' );
 delete_option( 'aeomatic_conflict_notice_dismissed' );
 delete_option( 'aeomatic_review_dismissed' );
+delete_option( 'aeomatic_review_snoozed_until' );
 delete_option( 'aeomatic_crawler_log_entries' );
 delete_transient( 'aeomatic_verification_cache' );
 delete_transient( 'aeomatic_site_audit_cache' );
@@ -26,3 +27,4 @@ $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_aeomatic_schema_type' ) )
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_aeomatic_schema_analysis' ) ); // phpcs:ignore WordPress.DB
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_aeomatic_schema_cache' ) ); // phpcs:ignore WordPress.DB
 $wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_aeomatic_schema_overrides' ) ); // phpcs:ignore WordPress.DB
+$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_aeomatic_acf_text' ) ); // phpcs:ignore WordPress.DB

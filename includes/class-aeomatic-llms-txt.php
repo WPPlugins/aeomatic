@@ -58,6 +58,10 @@ class AEOMATIC_LLMs_Txt {
 		nocache_headers();
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		header( 'X-Robots-Tag: noindex' );
+		// The endpoint is intentionally world-readable. Online validators and
+		// AI clients fetch it via browser fetch(), which requires CORS.
+		header( 'Access-Control-Allow-Origin: *' );
+		header( 'Access-Control-Allow-Methods: GET, HEAD, OPTIONS' );
 
 		if ( $is_full ) {
 			AEOMATIC_Activity::bump( 'llms_full_serves' );
