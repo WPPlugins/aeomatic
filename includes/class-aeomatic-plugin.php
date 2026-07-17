@@ -41,9 +41,11 @@ class AEOMATIC_Plugin {
 		( new AEOMATIC_Conflict_Detector() )->register();
 		( new AEOMATIC_AI_Headers() )->register();
 		( new AEOMATIC_Crawler_Log() )->register();
+		( new AEOMATIC_Shortcodes() )->register();
 
 		if ( is_admin() ) {
 			( new AEOMATIC_Admin() )->register();
+			( new AEOMATIC_Author_Profile() )->register();
 		}
 	}
 

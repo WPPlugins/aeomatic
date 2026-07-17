@@ -138,7 +138,118 @@ class AEOMATIC_Schema_Builder {
 		if ( $wc ) {
 			$base['wordCount'] = $wc;
 		}
+
+		// GEO enrichment: abstract, about, mentions, citation.
+		// AI engines use these to map the article into their knowledge graph
+		// and to surface short quotable summaries in generative answers.
+		$enriched = self::geo_enrich_article( $post, $text, $html );
+		foreach ( $enriched as $k => $v ) {
+			if ( ! empty( $v ) ) {
+				$base[ $k ] = $v;
+			}
+		}
 		return $base;
+	}
+
+	/**
+	 * Auto-derive GEO-friendly schema properties from existing post data.
+	 *
+	 * - abstract: WP excerpt (or first ~300 chars of text if no excerpt).
+	 * - about: categories as Thing[] with optional sameAs (Wikipedia URL hint).
+	 * - mentions: tags as Thing[].
+	 * - citation: outbound external links from the post content, treated as
+	 *   `CreativeWork` references.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private static function geo_enrich_article( WP_Post $post, string $text, string $html ): array {
+		$out = array();
+
+		// abstract — short summary AI engines can quote directly.
+		$excerpt = trim( wp_strip_all_tags( get_the_excerpt( $post ) ) );
+		if ( '' === $excerpt && $text ) {
+			$excerpt = mb_substr( trim( $text ), 0, 300 );
+		}
+		if ( '' !== $excerpt ) {
+			$out['abstract'] = $excerpt;
+		}
+
+		// about — primary topics, from categories.
+		$cats = get_the_category( $post->ID );
+		if ( ! empty( $cats ) ) {
+			$about = array();
+			foreach ( $cats as $c ) {
+				$about[] = array(
+					'@type' => 'Thing',
+					'name'  => $c->name,
+				);
+			}
+			$out['about'] = $about;
+		}
+
+		// mentions — secondary entities, from tags.
+		$tags = get_the_tags( $post->ID );
+		if ( ! empty( $tags ) && is_array( $tags ) ) {
+			$mentions = array();
+			foreach ( $tags as $t ) {
+				$mentions[] = array(
+					'@type' => 'Thing',
+					'name'  => $t->name,
+				);
+			}
+			$out['mentions'] = $mentions;
+		}
+
+		// citation — outbound external links treated as referenced works.
+		$citations = self::extract_citations( $html );
+		if ( ! empty( $citations ) ) {
+			$out['citation'] = $citations;
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Pull external links from post HTML and shape them as schema.org
+	 * CreativeWork references. Capped at 20 to keep JSON-LD payload sane.
+	 *
+	 * @return array<int,array{@type:string,url:string,name:string}>
+	 */
+	private static function extract_citations( string $html ): array {
+		if ( '' === $html ) {
+			return array();
+		}
+		$home = wp_parse_url( home_url(), PHP_URL_HOST );
+		if ( ! preg_match_all( '/<a\s+[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)<\/a>/is', $html, $matches, PREG_SET_ORDER ) ) {
+			return array();
+		}
+
+		$seen = array();
+		$out  = array();
+		foreach ( $matches as $m ) {
+			$href = (string) $m[1];
+			$host = wp_parse_url( $href, PHP_URL_HOST );
+			if ( ! $host || $host === $home || str_ends_with( $host, '.' . $home ) ) {
+				continue;
+			}
+			if ( ! preg_match( '#^https?://#i', $href ) ) {
+				continue;
+			}
+			if ( isset( $seen[ $href ] ) ) {
+				continue;
+			}
+			$seen[ $href ] = true;
+			$anchor = trim( wp_strip_all_tags( $m[2] ?? '' ) );
+			$out[]  = array(
+				'@type' => 'CreativeWork',
+				'url'   => esc_url_raw( $href ),
+				'name'  => $anchor !== '' ? $anchor : $host,
+			);
+			if ( count( $out ) >= 20 ) {
+				break;
+			}
+		}
+		return $out;
 	}
 
 	private static function build_blogposting( WP_Post $post, array $base, array $settings, string $text, string $html ): array {

@@ -48,6 +48,10 @@ class AEOMATIC_Content_Extractor {
 		if ( ! empty( $post->post_content ) ) {
 			$html_parts[] = (string) $post->post_content;
 			$faqs = array_merge( $faqs, self::extract_gutenberg_faqs( $post->post_content ) );
+			// Classic-editor FAQ shortcodes ([aeo_qa] inside [aeo_faq]).
+			if ( class_exists( 'AEOMATIC_Shortcodes' ) ) {
+				$faqs = array_merge( $faqs, AEOMATIC_Shortcodes::extract_pairs( $post->post_content ) );
+			}
 		}
 
 		// 2. Page-builder-specific content extraction.
@@ -57,12 +61,14 @@ class AEOMATIC_Content_Extractor {
 				if ( $elementor_html ) {
 					$html_parts[] = $elementor_html;
 				}
+				$faqs = array_merge( $faqs, self::extract_elementor_faqs( $post ) );
 				break;
 			case 'divi':
 				$divi_html = self::extract_divi( $post );
 				if ( $divi_html ) {
 					$html_parts[] = $divi_html;
 				}
+				$faqs = array_merge( $faqs, self::extract_divi_faqs( (string) $post->post_content ) );
 				break;
 			case 'beaver':
 				$bb_html = self::extract_beaver_builder( $post );
@@ -87,6 +93,7 @@ class AEOMATIC_Content_Extractor {
 				if ( $wpb_html ) {
 					$html_parts[] = $wpb_html;
 				}
+				$faqs = array_merge( $faqs, self::extract_wpbakery_faqs( (string) $post->post_content ) );
 				break;
 		}
 
@@ -114,6 +121,17 @@ class AEOMATIC_Content_Extractor {
 		$html = implode( "\n\n", array_filter( $html_parts ) );
 		$text = trim( wp_strip_all_tags( $html ) );
 		$text = preg_replace( '/\s+/', ' ', $text );
+
+		// 6. Universal HTML FAQ detection — works for every builder once their
+		// content is in $html. Catches question headings, <details>/<summary>,
+		// definition lists, and pre-existing Question microdata.
+		if ( apply_filters( 'aeomatic_detect_faqs', true, $post ) ) {
+			$faqs = array_merge( $faqs, self::extract_universal_faqs( $html ) );
+			$faqs = array_merge( $faqs, self::extract_acf_faqs( $post ) );
+		}
+
+		// Dedup by trimmed question — multiple sources often catch the same Q&A.
+		$faqs = self::dedup_faqs( $faqs );
 
 		$result = array(
 			'html'       => $html,
@@ -194,6 +212,318 @@ class AEOMATIC_Content_Extractor {
 			}
 		}
 		return $pairs;
+	}
+
+	/**
+	 * Universal FAQ detection across any HTML source. Catches:
+	 *   1. <details>/<summary>   — semantic disclosure widget
+	 *   2. <dl>/<dt>/<dd>        — definition lists
+	 *   3. Existing schema.org Question microdata in the HTML
+	 *   4. Question-style <h2>/<h3>/<h4> headings followed by paragraphs
+	 *
+	 * A "question-style" heading either ends with `?` or starts with a
+	 * recognised interrogative (how/what/why/when/where/who/which/is/are/can/do).
+	 *
+	 * @return array<int,array{q:string,a:string}>
+	 */
+	public static function extract_universal_faqs( string $html ): array {
+		if ( '' === trim( $html ) ) {
+			return array();
+		}
+
+		$pairs = array();
+
+		// 1. <details><summary>Q</summary>A</details>
+		if ( preg_match_all( '/<details[^>]*>\s*<summary[^>]*>(.*?)<\/summary>(.*?)<\/details>/is', $html, $m, PREG_SET_ORDER ) ) {
+			foreach ( $m as $row ) {
+				$q = self::clean_qa_text( $row[1] );
+				$a = self::clean_qa_text( $row[2] );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+		}
+
+		// 2. <dt>Q</dt><dd>A</dd>
+		if ( preg_match_all( '/<dt[^>]*>(.*?)<\/dt>\s*<dd[^>]*>(.*?)<\/dd>/is', $html, $m, PREG_SET_ORDER ) ) {
+			foreach ( $m as $row ) {
+				$q = self::clean_qa_text( $row[1] );
+				$a = self::clean_qa_text( $row[2] );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+		}
+
+		// 3. Existing schema.org Question microdata (don't re-extract if author
+		// already shipped the schema, but capture Q/A so we can re-emit it
+		// alongside others into one consolidated FAQPage block).
+		if ( preg_match_all(
+			'/<[^>]+itemtype=["\']https?:\/\/schema\.org\/Question["\'][^>]*>(.*?)(?=<[^>]+itemtype=["\']https?:\/\/schema\.org\/Question|<\/(?:article|section|main|body)|$)/is',
+			$html,
+			$m,
+			PREG_SET_ORDER
+		) ) {
+			foreach ( $m as $row ) {
+				$chunk = $row[1];
+				$q = '';
+				$a = '';
+				if ( preg_match( '/itemprop=["\']name["\'][^>]*>([^<]+)</is', $chunk, $qm ) ) {
+					$q = self::clean_qa_text( $qm[1] );
+				}
+				if ( preg_match( '/itemprop=["\']text["\'][^>]*>(.*?)<\//is', $chunk, $am ) ) {
+					$a = self::clean_qa_text( $am[1] );
+				}
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+		}
+
+		// 4. Question-style heading + following non-heading content. We split on
+		// headings so each pair is a heading and the next sibling chunk before
+		// the next heading. Headings without a question mark must lead with an
+		// interrogative to be considered a question.
+		if ( preg_match_all( '/<h([2-4])[^>]*>(.*?)<\/h\1>(.*?)(?=<h[2-4][^>]*>|$)/is', $html, $m, PREG_SET_ORDER ) ) {
+			$interrogative = '/^(how|what|why|when|where|who|which|is|are|can|should|does|do)\b/i';
+			foreach ( $m as $row ) {
+				$q = self::clean_qa_text( $row[2] );
+				$a = self::clean_qa_text( $row[3] );
+				if ( '' === $q || '' === $a ) {
+					continue;
+				}
+				$looks_like_question = str_ends_with( $q, '?' ) || (bool) preg_match( $interrogative, $q );
+				if ( ! $looks_like_question ) {
+					continue;
+				}
+				if ( ! self::is_valid_qa( $q, $a ) ) {
+					continue;
+				}
+				$pairs[] = array( 'q' => $q, 'a' => $a );
+			}
+		}
+
+		return $pairs;
+	}
+
+	/**
+	 * Pull Q&A pairs from Divi toggle and accordion modules.
+	 *   [et_pb_toggle title="Q?"]A[/et_pb_toggle]
+	 *   [et_pb_accordion_item title="Q?"]A[/et_pb_accordion_item]
+	 *
+	 * @return array<int,array{q:string,a:string}>
+	 */
+	public static function extract_divi_faqs( string $content ): array {
+		if ( false === strpos( $content, '[et_pb_' ) ) {
+			return array();
+		}
+		$pairs = array();
+		$patterns = array(
+			'/\[et_pb_toggle\b([^\]]*)\](.*?)\[\/et_pb_toggle\]/is',
+			'/\[et_pb_accordion_item\b([^\]]*)\](.*?)\[\/et_pb_accordion_item\]/is',
+		);
+		foreach ( $patterns as $pat ) {
+			if ( ! preg_match_all( $pat, $content, $m, PREG_SET_ORDER ) ) {
+				continue;
+			}
+			foreach ( $m as $row ) {
+				$attrs = shortcode_parse_atts( $row[1] ) ?: array();
+				$q = isset( $attrs['title'] ) ? self::clean_qa_text( $attrs['title'] ) : '';
+				$a = self::clean_qa_text( $row[2] );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+		}
+		return $pairs;
+	}
+
+	/**
+	 * Pull Q&A pairs from WPBakery toggle shortcodes.
+	 *   [vc_toggle title="Q?"]A[/vc_toggle]
+	 *
+	 * @return array<int,array{q:string,a:string}>
+	 */
+	public static function extract_wpbakery_faqs( string $content ): array {
+		if ( false === strpos( $content, '[vc_toggle' ) ) {
+			return array();
+		}
+		$pairs = array();
+		if ( preg_match_all( '/\[vc_toggle\b([^\]]*)\](.*?)\[\/vc_toggle\]/is', $content, $m, PREG_SET_ORDER ) ) {
+			foreach ( $m as $row ) {
+				$attrs = shortcode_parse_atts( $row[1] ) ?: array();
+				$q = isset( $attrs['title'] ) ? self::clean_qa_text( $attrs['title'] ) : '';
+				$a = self::clean_qa_text( $row[2] );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+		}
+		return $pairs;
+	}
+
+	/**
+	 * Pull Q&A pairs from Elementor accordion/toggle widgets. Walks the
+	 * `_elementor_data` JSON tree and recognises widgets whose settings
+	 * contain a `tabs` array of `{tab_title, tab_content}` rows, or a
+	 * single `accordion_title` + `accordion_content` pair.
+	 *
+	 * @return array<int,array{q:string,a:string}>
+	 */
+	public static function extract_elementor_faqs( WP_Post $post ): array {
+		$data = get_post_meta( $post->ID, '_elementor_data', true );
+		if ( empty( $data ) ) {
+			return array();
+		}
+		$decoded = json_decode( is_string( $data ) ? $data : wp_json_encode( $data ), true );
+		if ( ! is_array( $decoded ) ) {
+			return array();
+		}
+		$pairs = array();
+		self::walk_elementor_for_faqs( $decoded, $pairs );
+		return $pairs;
+	}
+
+	private static function walk_elementor_for_faqs( array $nodes, array &$pairs ): void {
+		foreach ( $nodes as $node ) {
+			if ( ! is_array( $node ) ) {
+				continue;
+			}
+			$settings = $node['settings'] ?? array();
+			if ( is_array( $settings ) ) {
+				// Multi-item accordion/toggle: settings.tabs[].{tab_title, tab_content}
+				if ( ! empty( $settings['tabs'] ) && is_array( $settings['tabs'] ) ) {
+					foreach ( $settings['tabs'] as $tab ) {
+						if ( ! is_array( $tab ) ) {
+							continue;
+						}
+						$q = self::clean_qa_text( $tab['tab_title'] ?? '' );
+						$a = self::clean_qa_text( $tab['tab_content'] ?? '' );
+						if ( self::is_valid_qa( $q, $a ) ) {
+							$pairs[] = array( 'q' => $q, 'a' => $a );
+						}
+					}
+				}
+				// Single accordion item.
+				$q = self::clean_qa_text( $settings['accordion_title'] ?? '' );
+				$a = self::clean_qa_text( $settings['accordion_content'] ?? '' );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+			if ( ! empty( $node['elements'] ) && is_array( $node['elements'] ) ) {
+				self::walk_elementor_for_faqs( $node['elements'], $pairs );
+			}
+		}
+	}
+
+	/**
+	 * Detect Q&A patterns in ACF repeater data using the cached text plus a
+	 * structured pass through the repeater rows. Looks for repeaters where one
+	 * sub-field name contains "question" and another contains "answer".
+	 *
+	 * Uses the safe-context guard from `extract_acf_fields()` — never invokes
+	 * ACF's getter API during a live frontend render.
+	 *
+	 * @return array<int,array{q:string,a:string}>
+	 */
+	public static function extract_acf_faqs( WP_Post $post ): array {
+		if ( ! function_exists( 'get_field_objects' ) ) {
+			return array();
+		}
+		if ( ! self::is_safe_acf_context() ) {
+			return array();
+		}
+		$fields = get_field_objects( $post->ID );
+		if ( empty( $fields ) || ! is_array( $fields ) ) {
+			return array();
+		}
+		$pairs = array();
+		foreach ( $fields as $field ) {
+			if ( ! is_array( $field ) ) {
+				continue;
+			}
+			$parent = $field['parent'] ?? '';
+			if ( $parent && str_starts_with( (string) $parent, 'field_' ) ) {
+				continue; // sub-field instance — handled via parent
+			}
+			if ( ( $field['type'] ?? '' ) !== 'repeater' ) {
+				continue;
+			}
+			$rows       = is_array( $field['value'] ?? null ) ? $field['value'] : array();
+			$sub_fields = $field['sub_fields'] ?? array();
+			$q_key = $a_key = '';
+			foreach ( $sub_fields as $sf ) {
+				$name = strtolower( (string) ( $sf['name'] ?? '' ) );
+				if ( '' === $q_key && false !== strpos( $name, 'question' ) ) {
+					$q_key = $sf['name'];
+				} elseif ( '' === $a_key && false !== strpos( $name, 'answer' ) ) {
+					$a_key = $sf['name'];
+				}
+			}
+			if ( '' === $q_key || '' === $a_key ) {
+				continue;
+			}
+			foreach ( $rows as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$q = self::clean_qa_text( $row[ $q_key ] ?? '' );
+				$a = self::clean_qa_text( $row[ $a_key ] ?? '' );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => $a );
+				}
+			}
+		}
+		return $pairs;
+	}
+
+	/**
+	 * Normalise question/answer text — strip tags, collapse whitespace.
+	 */
+	private static function clean_qa_text( $raw ): string {
+		if ( ! is_string( $raw ) ) {
+			return '';
+		}
+		$txt = wp_strip_all_tags( $raw );
+		$txt = preg_replace( '/\s+/', ' ', $txt );
+		return trim( (string) $txt );
+	}
+
+	/**
+	 * Heuristic gate so we only emit Q&As that look real: substantive answer,
+	 * non-empty question, neither suspiciously short nor enormous.
+	 */
+	private static function is_valid_qa( string $q, string $a ): bool {
+		if ( '' === $q || '' === $a ) {
+			return false;
+		}
+		if ( strlen( $q ) < 8 || strlen( $q ) > 300 ) {
+			return false;
+		}
+		if ( strlen( $a ) < 20 || strlen( $a ) > 5000 ) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Deduplicate FAQ pairs by lower-cased trimmed question text. Keeps the
+	 * first occurrence (which is also the highest-confidence source given the
+	 * extractor ordering).
+	 */
+	private static function dedup_faqs( array $pairs ): array {
+		$seen = array();
+		$out  = array();
+		foreach ( $pairs as $p ) {
+			$key = strtolower( trim( $p['q'] ?? '' ) );
+			if ( '' === $key || isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+			$out[] = $p;
+		}
+		return $out;
 	}
 
 	/**

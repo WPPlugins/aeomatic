@@ -26,7 +26,10 @@ class AEOMATIC_Crawler_Log {
 		'ChatGPT-User',
 		'OAI-SearchBot',
 		'ClaudeBot',
+		'Claude-User',
 		'Claude-SearchBot',
+		// Legacy Anthropic UAs — retained for detection only (no longer used by Anthropic per
+		// https://support.claude.com/en/articles/8896518). Removed from default allow-list.
 		'Claude-Web',
 		'anthropic-ai',
 		'PerplexityBot',

@@ -497,7 +497,7 @@ class AEOMATIC_Audit {
 			'points' => $has_faq ? 10 : 0,
 			'max'    => 10,
 			'passed' => $has_faq,
-			'hint'   => __( 'Add an AEOmatic — AI based Answer Engine Optimization FAQ block. FAQ schema is one of the strongest AEO signals.', 'aeomatic' ),
+			'hint'   => __( 'Add an AEO FAQ block (Gutenberg) or [aeo_faq][aeo_qa] shortcode (Classic Editor). FAQ schema is one of the strongest AEO signals.', 'aeomatic' ),
 		);
 
 		// 4. Schema enabled (proxy) — checks settings (15 pts).
@@ -601,10 +601,76 @@ class AEOMATIC_Audit {
 			'hint'   => sprintf( __( 'Aim for at least %d words. Thin content rarely gets cited.', 'aeomatic' ), $min_words ),
 		);
 
-		$score = 0;
-		foreach ( $checks as $c ) {
-			$score += $c['points'];
+		// 11. Statistics & data citations (10 pts) — Semrush finds posts with
+		// numerical stats and external citations get 30–40% more AI citations.
+		$stat_matches = 0;
+		// Numbers with % or quantifiers like "X% / X percent / $X / Xk users / X million".
+		if ( preg_match_all( '/\b\d{1,3}(?:[\.,]\d+)?\s*(?:%|percent|million|billion|thousand|k\b|users|customers|companies|sites|studies)\b/i', $content_text, $sm ) ) {
+			$stat_matches = count( $sm[0] );
 		}
+		// External citation links — outbound <a href> to non-self domains.
+		$citation_count = 0;
+		foreach ( ( $am[1] ?? array() ) as $href ) {
+			$host = wp_parse_url( $href, PHP_URL_HOST );
+			if ( $host && $host !== $home && ! str_starts_with( $host, 'www.' . $home ) ) {
+				$citation_count++;
+			}
+		}
+		$stats_pts = 0;
+		if ( $stat_matches >= 2 && $citation_count >= 1 ) {
+			$stats_pts = 10;
+		} elseif ( $stat_matches >= 2 || $citation_count >= 1 ) {
+			$stats_pts = 5;
+		}
+		$checks[] = array(
+			'key'    => 'stats_citations',
+			'label'  => __( 'Statistics & external citations', 'aeomatic' ),
+			'points' => $stats_pts,
+			'max'    => 10,
+			'passed' => 10 === $stats_pts,
+			'hint'   => __( 'Cite ≥2 numerical statistics and link to ≥1 external authoritative source. Posts with verifiable data are cited 30–40% more often by AI engines.', 'aeomatic' ),
+		);
+
+		// 12. First-hand experience markers (5 pts) — Google E-E-A-T signal.
+		$firsthand_patterns = '/\b(i (?:tested|tried|used|measured|reviewed|found|noticed|built|wrote)|we (?:tested|tried|used|measured|reviewed|found|noticed|built|ran)|in (?:my|our) (?:experience|tests?|review|setup)|after (?:weeks|months|years) of)\b/i';
+		$has_firsthand = (bool) preg_match( $firsthand_patterns, $content_text );
+		$checks[] = array(
+			'key'    => 'firsthand_experience',
+			'label'  => __( 'First-hand experience markers', 'aeomatic' ),
+			'points' => $has_firsthand ? 5 : 0,
+			'max'    => 5,
+			'passed' => $has_firsthand,
+			'hint'   => __( 'Mention what you tested, built, used, or measured yourself ("I tested…", "In our review…"). First-hand experience is a primary Google E-E-A-T signal.', 'aeomatic' ),
+		);
+
+		// 13. Content freshness (5 pts) — AI engines favour recently updated pages.
+		$modified_ts   = (int) get_post_modified_time( 'U', true, $post );
+		$age_in_days   = $modified_ts ? ( time() - $modified_ts ) / DAY_IN_SECONDS : PHP_INT_MAX;
+		if ( $age_in_days <= 180 ) {
+			$fresh_pts = 5;
+		} elseif ( $age_in_days <= 365 ) {
+			$fresh_pts = 3;
+		} else {
+			$fresh_pts = 0;
+		}
+		$checks[] = array(
+			'key'    => 'freshness',
+			'label'  => __( 'Content updated recently', 'aeomatic' ),
+			'points' => $fresh_pts,
+			'max'    => 5,
+			'passed' => 5 === $fresh_pts,
+			'hint'   => __( 'Refresh the post (any meaningful edit) at least every 6 months. Recency is a measurable AI citation factor.', 'aeomatic' ),
+		);
+
+		// Normalise to 0–100 so existing dashboard thresholds (≥70 good, ≥40 okay) keep working
+		// as criteria are added or removed over time.
+		$earned    = 0;
+		$max_total = 0;
+		foreach ( $checks as $c ) {
+			$earned    += (int) $c['points'];
+			$max_total += (int) ( $c['max'] ?? 0 );
+		}
+		$score = $max_total > 0 ? (int) round( ( $earned / $max_total ) * 100 ) : 0;
 
 		update_post_meta( $post->ID, self::META_SCORE, $score );
 		update_post_meta( $post->ID, self::META_BREAKDOWN, wp_json_encode( $checks ) );

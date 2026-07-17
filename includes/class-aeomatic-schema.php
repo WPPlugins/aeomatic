@@ -315,6 +315,57 @@ class AEOMATIC_Schema {
 			$schema['sameAs'] = $same;
 		}
 
+		// GEO author authority enrichment — read optional user_meta keys that
+		// site admins / theme builders can populate to strengthen E-E-A-T.
+		// All values support newline-separated lists.
+		$schema = self::add_author_authority( $schema, $user_id );
+
+		return $schema;
+	}
+
+	/**
+	 * Attach Person authority properties from user_meta. The site admin (or
+	 * a theme) is expected to add these custom user fields; AEOmatic just
+	 * reads and emits them. Newline-separated values become arrays.
+	 *
+	 *   aeomatic_knows_about     → knowsAbout (string[])
+	 *   aeomatic_has_credential  → hasCredential (string[])
+	 *   aeomatic_works_for       → worksFor (Organization name)
+	 *   aeomatic_alumni_of       → alumniOf (string[])
+	 *   aeomatic_award           → award (string[])
+	 *   aeomatic_job_title       → jobTitle
+	 */
+	private function add_author_authority( array $schema, int $user_id ): array {
+		$list_keys = array(
+			'knows_about'    => 'knowsAbout',
+			'has_credential' => 'hasCredential',
+			'alumni_of'      => 'alumniOf',
+			'award'          => 'award',
+		);
+		foreach ( $list_keys as $meta_key => $schema_key ) {
+			$raw = (string) get_user_meta( $user_id, 'aeomatic_' . $meta_key, true );
+			if ( '' === trim( $raw ) ) {
+				continue;
+			}
+			$items = array_values( array_filter( array_map( 'trim', preg_split( '/\r\n|\r|\n/', $raw ) ) ) );
+			if ( ! empty( $items ) ) {
+				$schema[ $schema_key ] = count( $items ) === 1 ? $items[0] : $items;
+			}
+		}
+
+		$job_title = (string) get_user_meta( $user_id, 'aeomatic_job_title', true );
+		if ( '' !== trim( $job_title ) ) {
+			$schema['jobTitle'] = $job_title;
+		}
+
+		$works_for = (string) get_user_meta( $user_id, 'aeomatic_works_for', true );
+		if ( '' !== trim( $works_for ) ) {
+			$schema['worksFor'] = array(
+				'@type' => 'Organization',
+				'name'  => $works_for,
+			);
+		}
+
 		return $schema;
 	}
 
