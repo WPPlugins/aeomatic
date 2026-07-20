@@ -2,9 +2,9 @@
 Contributors: mmtushar
 Tags: aeo, answer engine optimization, llms.txt, ai seo, schema
 Requires at least: 6.4
-Tested up to: 6.7
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -169,6 +169,10 @@ AEOmatic does not collect, store, or transmit any personal data to external serv
 
 == Changelog ==
 
+= 1.1.3 =
+* **Compatibility:** tested up to WordPress 7.1. No functional changes; this release only refreshes the "Tested up to" header so recent WordPress installs no longer flag the plugin as untested against the last three major releases.
+* Existing installations do not need to re-flush permalinks.
+
 = 1.1.2 =
 * **AI crawler list updated to match Anthropic's current published user agents.** Added `Claude-User` (Anthropic's user-triggered live-fetch UA, equivalent to `ChatGPT-User`) to the default allow-list and audit detection. Removed deprecated `Claude-Web` and `anthropic-ai` from the default allow-list for new installs; they remain recognised by the visit log for backward compatibility. Source: [Anthropic crawler documentation](https://support.claude.com/en/articles/8896518).
 * Existing installations do not need to re-flush permalinks.
@@ -210,6 +214,9 @@ AEOmatic does not collect, store, or transmit any personal data to external serv
 * All public custom post types auto-detected and supported.
 
 == Upgrade Notice ==
+
+= 1.1.3 =
+Compatibility bump: tested up to WordPress 7.1. No functional changes. No re-flush required.
 
 = 1.1.2 =
 Anthropic crawler list corrected: adds Claude-User (the dominant Anthropic live-fetch UA), removes deprecated Claude-Web and anthropic-ai from the default allow-list. No re-flush required.
