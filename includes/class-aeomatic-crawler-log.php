@@ -2,9 +2,11 @@
 /**
  * AI crawler visit log.
  *
- * Logs recognised AI bot visits to a capped options-based ring buffer (max 200
- * entries). No custom DB table is needed — entries are trimmed on write.
- * Provides summary and recent-visit accessors for the admin dashboard.
+ * Logs recognised AI bot visits to an options-based ring buffer. Retention is
+ * hybrid: a daily cron purges entries older than the configured retention
+ * window (default 90 days), and a hard cap (500 entries) acts as a safety
+ * ceiling against bot storms. Exposes a small stats surface so the admin
+ * dashboard widget can show retention health without recomputing.
  *
  * @package AEOmatic
  */
@@ -15,8 +17,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class AEOMATIC_Crawler_Log {
 
-	const OPTION_KEY = 'aeomatic_crawler_log_entries';
-	const MAX        = 200;
+	const OPTION_KEY             = 'aeomatic_crawler_log_entries';
+	const STATS_OPTION_KEY       = 'aeomatic_crawler_log_stats';
+	const CRON_HOOK              = 'aeomatic_crawler_log_purge';
+	const MAX                    = 500;
+	const DEFAULT_RETENTION_DAYS = 90;
 
 	/**
 	 * All recognised AI bot strings (case-insensitive substring match).
@@ -40,13 +45,23 @@ class AEOMATIC_Crawler_Log {
 		'Bytespider',
 		'Amazonbot',
 		'meta-externalagent',
+		// Meta's per-user fetcher — distinct from meta-externalagent (the training UA).
+		'Meta-ExternalFetcher',
 		'DeepSeekBot',
 		'Cohere-AI',
+		// DuckDuckGo's AI-answers fetcher.
+		'DuckAssistBot',
 	);
 
 	public function register(): void {
-		// Run after WP is fully loaded so is_admin() and similar are reliable.
 		add_action( 'wp', array( $this, 'maybe_log' ) );
+		add_action( self::CRON_HOOK, array( __CLASS__, 'run_purge' ) );
+
+		// Self-heal: if activation ran before this build (or the schedule was
+		// dropped), make sure the daily purge is queued.
+		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::CRON_HOOK );
+		}
 	}
 
 	public function maybe_log(): void {
@@ -112,9 +127,101 @@ class AEOMATIC_Crawler_Log {
 	}
 
 	/**
+	 * Retention health snapshot for the dashboard widget.
+	 * kept          — current row count
+	 * oldest_age    — age in seconds of the oldest kept entry (0 if empty)
+	 * retention_days — configured retention window
+	 * purged_last   — rows removed on the last cron pass (0 if none yet)
+	 * purged_at     — timestamp of the last cron pass
+	 */
+	public static function get_retention_summary(): array {
+		$log   = (array) get_option( self::OPTION_KEY, array() );
+		$stats = (array) get_option( self::STATS_OPTION_KEY, array() );
+
+		$oldest_age = 0;
+		if ( ! empty( $log ) ) {
+			$oldest_entry = $log[0];
+			$oldest_ts    = (int) ( $oldest_entry['time'] ?? 0 );
+			$oldest_age   = $oldest_ts ? max( 0, time() - $oldest_ts ) : 0;
+		}
+
+		return array(
+			'kept'           => count( $log ),
+			'oldest_age'     => $oldest_age,
+			'retention_days' => self::get_retention_days(),
+			'purged_last'    => (int) ( $stats['purged_last'] ?? 0 ),
+			'purged_at'      => (int) ( $stats['purged_at'] ?? 0 ),
+			'cap'            => self::MAX,
+		);
+	}
+
+	/**
+	 * Read the configured retention window (falls back to default).
+	 */
+	public static function get_retention_days(): int {
+		$days = (int) AEOMATIC_Settings::get( 'log', 'retention_days' );
+		if ( $days < 7 || $days > 365 ) {
+			return self::DEFAULT_RETENTION_DAYS;
+		}
+		return $days;
+	}
+
+	/**
+	 * Cron target: drop entries older than the retention window and record
+	 * how many were removed so the widget can show it.
+	 */
+	public static function run_purge(): void {
+		$log = (array) get_option( self::OPTION_KEY, array() );
+		if ( empty( $log ) ) {
+			update_option(
+				self::STATS_OPTION_KEY,
+				array( 'purged_last' => 0, 'purged_at' => time() ),
+				false
+			);
+			return;
+		}
+
+		$cutoff = time() - ( self::get_retention_days() * DAY_IN_SECONDS );
+		$kept   = array();
+		foreach ( $log as $entry ) {
+			if ( (int) ( $entry['time'] ?? 0 ) >= $cutoff ) {
+				$kept[] = $entry;
+			}
+		}
+
+		$purged = count( $log ) - count( $kept );
+		update_option( self::OPTION_KEY, $kept, false );
+		update_option(
+			self::STATS_OPTION_KEY,
+			array( 'purged_last' => $purged, 'purged_at' => time() ),
+			false
+		);
+	}
+
+	/**
 	 * Erase all log entries (used by uninstall and admin reset).
 	 */
 	public static function clear(): void {
 		delete_option( self::OPTION_KEY );
+		delete_option( self::STATS_OPTION_KEY );
+	}
+
+	/**
+	 * Called from the activation hook to guarantee the purge cron is scheduled.
+	 */
+	public static function schedule_cron(): void {
+		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', self::CRON_HOOK );
+		}
+	}
+
+	/**
+	 * Called from the deactivation hook to remove the scheduled cron.
+	 */
+	public static function unschedule_cron(): void {
+		$timestamp = wp_next_scheduled( self::CRON_HOOK );
+		if ( $timestamp ) {
+			wp_unschedule_event( $timestamp, self::CRON_HOOK );
+		}
 	}
 }

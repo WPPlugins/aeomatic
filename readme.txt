@@ -2,9 +2,9 @@
 Contributors: mmtushar
 Tags: aeo, answer engine optimization, llms.txt, ai seo, schema
 Requires at least: 6.4
-Tested up to: 7.1
+Tested up to: 6.7
 Requires PHP: 8.0
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,13 +34,23 @@ AEOmatic fixes that. It runs alongside Yoast, Rank Math, AIOSEO, SEOPress, or Th
 
 * **`/llms-full.txt` endpoint** — a single URL that returns the full markdown body of every published page and post. AI crawlers can ingest your whole site in one HTTP GET instead of following dozens of links from your `llms.txt` index.
 
-* **AI crawler control** — per-bot Allow/Disallow toggles in your `robots.txt` for 16 AI crawlers: GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-User, Claude-SearchBot, PerplexityBot, Perplexity-User, Google-Extended, CCBot, Bytespider, Amazonbot, Applebot-Extended, meta-externalagent, DeepSeekBot, Cohere-AI. Tracks Anthropic's three current user agents (ClaudeBot, Claude-User, Claude-SearchBot) per [Anthropic's published crawler documentation](https://support.claude.com/en/articles/8896518).
+* **AI crawler control** — per-bot Allow/Disallow toggles in your `robots.txt` for 18 AI crawlers by default (20 recognised in the visit log): GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-User, Claude-SearchBot, PerplexityBot, Perplexity-User, Google-Extended, CCBot, Bytespider, Amazonbot, Applebot-Extended, meta-externalagent, Meta-ExternalFetcher, DeepSeekBot, Cohere-AI, DuckAssistBot. Tracks Anthropic's three current user agents (ClaudeBot, Claude-User, Claude-SearchBot) per [Anthropic's published crawler documentation](https://support.claude.com/en/articles/8896518).
 
 * **AI HTTP discovery headers** — five emerging AI-citation headers emitted automatically on every public page: `X-AI-Crawl`, `X-AI-Citeable`, `X-Content-License`, `X-AI-Content-Type`, `X-AI-Speakable`. Plus a `Link` header pointing to your `llms.txt`.
 
 * **AI crawler visit log** — records every recognised AI bot visit (bot name, URL, timestamp) in a capped log. See exactly how often GPTBot, ClaudeBot, or PerplexityBot crawl your site.
 
 * **AEO content audit** — every post scored 0–100 on the 10 signals that predict AI citation: direct opening answer, question-style headings, FAQ block, schema, author authority, internal links, structured content, image alt text, page weight, word count.
+
+* **Setup Wizard (1.1.4+)** — a five-step onboarding that runs on activation. Auto-imports organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework, with live JSON-LD preview and per-plugin opt-in. Never overwrites values you already set in AEOmatic. Fully offline.
+
+* **WordPress dashboard widget (1.1.4+)** — "AEO Readiness" tile on the native wp-admin dashboard: average AEO score, posts with citation gaps, top three AI-bot visitors with a mini bar chart, and log-retention health.
+
+* **Bulk audit action (1.1.4+)** — one bulk action on Posts/Pages/CPT list screens re-runs the audit and citation-gap analysers across selected rows. Admin notice shows average scores, total gaps flagged, and a per-post score table.
+
+* **Ask AI — "Am I cited?" (1.1.3+)** — four one-click buttons in the editor sidebar (ChatGPT, Perplexity, Google AI, Claude). Opens each engine in a new tab with your post title pre-filled as the question, so you can check for yourself whether your site is quoted in the AI answer. No API keys, no accounts, no external calls from your server — just links your browser opens.
+
+* **AI Citation Gaps (1.1.3+)** — sixteen local, rules-based checks that flag exactly why a page won't get cited by AI engines: orphan pages, missing opening answer, no FAQ block, schema type mismatch, low internal-link count, sibling-topic gaps by category, and more. Runs per-post in the block editor sidebar and site-wide from **AEOmatic → Citation Gaps**. Each gap ships with a one-line fix hint plus a one-click quick-fix where possible. Fully offline; no external calls.
 
 * **FAQ Gutenberg block** — native Q&A block with accessible `<details>/<summary>` HTML and automatic FAQPage JSON-LD. No configuration needed.
 
@@ -152,6 +162,10 @@ Yes. AEOmatic produces standards-compliant schema, `llms.txt`, `robots.txt` dire
 
 Yes, that's the whole point. AEOmatic generates the structured signals (schema, llms.txt, /llms-full.txt, AI HTTP headers, answer-shaped content scoring) that AI engines use to identify and cite trustworthy sources. We can't guarantee placement (no plugin can), but we give you every signal those engines look for.
 
+= What is the new AI Citation Gaps feature? =
+
+A local, rules-based analyser (1.1.3+) that runs 16 checks on every post and page and flags the specific reasons a page is unlikely to be cited by AI engines — orphan pages, missing opening answers, FAQ content without FAQPage schema, low-confidence schema types, missing meta descriptions, missing from llms.txt, and more. Each gap comes with a one-line fix hint and — for structurally fixable gaps — a one-click quick-fix button. Available in the block editor sidebar per-post and as a site-wide **AEOmatic → Citation Gaps** table sorted worst-first. No external API calls; no keys, no account. Deeper LLM-powered gap analysis is planned for the Pro tier separately.
+
 = What happens when I uninstall AEOmatic? =
 
 Deactivating the plugin stops the AI crawler visit log, unregisters the `/llms.txt` and `/llms-full.txt` endpoints, and removes the injected schema, HTTP headers, and robots.txt AI directives. Your posts, pages, WooCommerce products, and any content you authored remain untouched. **Uninstalling** (deleting via **Plugins → Delete**) additionally removes AEOmatic's own options and per-post schema cache. It does not remove your Yoast, Rank Math, AIOSEO, or SEOPress settings — those were never modified.
@@ -169,9 +183,23 @@ AEOmatic does not collect, store, or transmit any personal data to external serv
 
 == Changelog ==
 
+= 1.1.4 =
+* **New: Setup Wizard.** Five-step guided onboarding runs automatically on activation. Auto-imports your organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework — never overwrites values you already set in AEOmatic. Live JSON-LD preview updates as you type. Fully offline; no accounts, no external calls. Re-runnable any time from the Plugins list.
+* **New: WordPress dashboard widget "AEO Readiness".** A compact tile on the native wp-admin dashboard showing average AEO score, count of posts with citation gaps, top three AI-bot visitors with a mini bar chart, and log-retention health. Colour-coded score chip so status reads at a glance.
+* **New: Bulk audit action on Posts/Pages/CPT list screens.** Select any rows, choose "AEOmatic — refresh audit & gaps," and recompute audit scores and citation gaps for all selected posts in one pass. Results appear in a dismissible admin notice with average scores, total gaps flagged, and an expandable per-post table. Safety cap of 50 posts per batch. Everything runs on your own server.
+* **New: Hybrid crawler-log retention.** The AI bot visit log now uses a daily WP-Cron purge (default 90-day retention, configurable 7–365 days from **AEOmatic → Settings → Crawler visit log**) plus a 500-entry safety ceiling, replacing the previous fixed 200-entry cap. The new Settings section also shows live log status: entries kept, age of the oldest row, and the last purge outcome.
+* **New AI crawlers recognised:** `DuckAssistBot` (DuckDuckGo AI) and `Meta-ExternalFetcher` (Meta's per-user fetcher, distinct from the training UA `meta-externalagent`). Both added to detection and to the default allow-list. Total recognised: 20 AI user agents.
+* Refactor: extracted `AEOMATIC_Audit::site_summary()` and `AEOMATIC_Citation_Gaps::site_summary()` as reusable public entry points so the dashboard widget, bulk-action notice, and REST endpoints all share one code path.
+
 = 1.1.3 =
-* **Compatibility:** tested up to WordPress 7.1. No functional changes; this release only refreshes the "Tested up to" header so recent WordPress installs no longer flag the plugin as untested against the last three major releases.
-* Existing installations do not need to re-flush permalinks.
+* **New: Ask AI — "Am I cited?" panel.** A new block-editor sidebar panel with four one-click buttons — Ask ChatGPT, Ask Perplexity, Ask Google AI, Ask Claude. Each button opens the AI engine in a new tab with your post title pre-filled as the question, so you can see with your own eyes whether your site is quoted in the AI's answer. No API keys, no accounts, no external calls from your server — the plugin only builds the link; your browser does the rest. Turns "did my AEO work?" from a guess into a 5-second test.
+* **New: AI Citation Gaps.** Sixteen local, rules-based checks that flag exactly why a page is unlikely to be cited by AI engines and what to change. Runs entirely on your own server — no external calls, no keys, no account.
+* Five internal-coverage rules: orphan pages, low internal-link count, sibling-topic gaps by category, thin body for depth-heavy schema types, and missing "related reading" hooks.
+* Eleven answer-shape rules: no direct opening answer, no question-style headings, missing FAQ block, FAQ content without FAQPage schema, HowTo content without HowTo schema, low-confidence schema type match, low image alt-text coverage, no citation hook (list/table/bold summary) near the top, missing author signal, missing meta description, and posts missing from the emitted `/llms.txt`.
+* New **AEOmatic → Citation Gaps** admin subpage with a filterable, paginated table across all posts and pages, plus a scanner-style summary strip (pages scanned / with gaps / clean / average score). Sorts worst-scoring first so you can triage. Filters: title search, post type, author, severity, gap type, score range, modified date range.
+* New **AI Citation Gaps** panel in the block editor sidebar — shows the top high/medium gaps for the open post with a one-line fix hint each and a one-click quick-fix button where a structural fix is possible. Available on every enabled post type (posts, pages, WooCommerce products, and any registered public CPT).
+* Fingerprint-based caching on post save — results persist in post meta and only rebuild when content, title, or schema type changes.
+* Filter hook `aeomatic_citation_gap_results` so power users can register their own rules.
 
 = 1.1.2 =
 * **AI crawler list updated to match Anthropic's current published user agents.** Added `Claude-User` (Anthropic's user-triggered live-fetch UA, equivalent to `ChatGPT-User`) to the default allow-list and audit detection. Removed deprecated `Claude-Web` and `anthropic-ai` from the default allow-list for new installs; they remain recognised by the visit log for backward compatibility. Source: [Anthropic crawler documentation](https://support.claude.com/en/articles/8896518).
@@ -215,8 +243,11 @@ AEOmatic does not collect, store, or transmit any personal data to external serv
 
 == Upgrade Notice ==
 
+= 1.1.4 =
+Adds a Setup Wizard (5 steps with live JSON-LD preview and auto-import from Yoast/Rank Math/SEOPress/AIOSEO/The SEO Framework), a WordPress dashboard widget with score + gap count + bot chart, a bulk "refresh audit & gaps" action on Posts/Pages list screens, hybrid 90-day/500-entry log retention, and two new AI crawlers (DuckAssistBot, Meta-ExternalFetcher). Fully offline. No re-flush required.
+
 = 1.1.3 =
-Compatibility bump: tested up to WordPress 7.1. No functional changes. No re-flush required.
+Adds "Ask AI: Am I cited?" — one-click buttons in the editor sidebar that open ChatGPT, Perplexity, Google AI, and Claude with your post title pre-filled, so you can verify AI citations yourself. Also adds AI Citation Gaps: 16 local rules with one-click quick-fixes, per-post sidebar panel, and a site-wide Citation Gaps admin page (title search, author filter, score range, date range). Fully offline; no external calls from your server. No re-flush required.
 
 = 1.1.2 =
 Anthropic crawler list corrected: adds Claude-User (the dominant Anthropic live-fetch UA), removes deprecated Claude-Web and anthropic-ai from the default allow-list. No re-flush required.

@@ -36,6 +36,7 @@ class AEOMATIC_Plugin {
 		( new AEOMATIC_LLMs_Txt() )->register();
 		( new AEOMATIC_Crawler_Control() )->register();
 		( new AEOMATIC_Audit() )->register();
+		( new AEOMATIC_Citation_Gaps() )->register();
 		( new AEOMATIC_Blocks() )->register();
 		( new AEOMATIC_Verification() )->register();
 		( new AEOMATIC_Conflict_Detector() )->register();
@@ -46,6 +47,9 @@ class AEOMATIC_Plugin {
 		if ( is_admin() ) {
 			( new AEOMATIC_Admin() )->register();
 			( new AEOMATIC_Author_Profile() )->register();
+			( new AEOMATIC_Dashboard_Widget() )->register();
+			( new AEOMATIC_Bulk_Actions() )->register();
+			( new AEOMATIC_Wizard() )->register();
 		}
 	}
 

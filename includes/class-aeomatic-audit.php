@@ -345,13 +345,15 @@ class AEOMATIC_Audit {
 	}
 
 	/**
-	 * Site-wide summary for the admin overview.
+	 * Site-wide summary for the admin overview (raw data, shared by REST and
+	 * the WP dashboard widget). Cached for 5 minutes; the on_save_post handler
+	 * clears the transient so scores stay fresh.
 	 */
-	public function rest_site_audit() {
+	public function site_summary(): array {
 		$cache_key = 'aeomatic_site_audit_cache';
 		$cached    = get_transient( $cache_key );
-		if ( false !== $cached ) {
-			return rest_ensure_response( $cached );
+		if ( false !== $cached && is_array( $cached ) ) {
+			return $cached;
 		}
 
 		$post_types = AEOMATIC_Post_Types::get_enabled_slugs();
@@ -368,7 +370,6 @@ class AEOMATIC_Audit {
 			'no_found_rows'  => true,
 		) );
 
-		$total  = 0;
 		$scores = array();
 		$worst  = array();
 		$by_pt  = array();
@@ -380,9 +381,8 @@ class AEOMATIC_Audit {
 				$score  = $result['score'];
 			}
 			$scores[] = $score;
-			$total   += $score;
 
-			$pt_obj = get_post_type_object( $p->post_type );
+			$pt_obj   = get_post_type_object( $p->post_type );
 			$pt_label = $pt_obj ? $pt_obj->labels->singular_name : $p->post_type;
 
 			$worst[] = array(
@@ -409,10 +409,16 @@ class AEOMATIC_Audit {
 			'by_post_type' => $by_pt,
 		);
 
-		// Cache for 5 minutes. Invalidated when any post is saved (see on_save_post).
 		set_transient( $cache_key, $result, 5 * MINUTE_IN_SECONDS );
 
-		return rest_ensure_response( $result );
+		return $result;
+	}
+
+	/**
+	 * REST wrapper for the site summary.
+	 */
+	public function rest_site_audit() {
+		return rest_ensure_response( $this->site_summary() );
 	}
 
 	/**

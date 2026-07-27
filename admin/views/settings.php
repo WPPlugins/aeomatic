@@ -197,12 +197,14 @@ settings_errors( 'aeomatic_messages' );
 				'Bytespider'         => __( 'ByteDance / TikTok crawler', 'aeomatic' ),
 				'Amazonbot'          => __( 'Amazon Alexa / AI', 'aeomatic' ),
 				'Applebot-Extended'  => __( 'Apple Intelligence opt-in', 'aeomatic' ),
-				'meta-externalagent' => __( 'Meta AI crawler', 'aeomatic' ),
+				'meta-externalagent'   => __( 'Meta AI training crawler', 'aeomatic' ),
+				'Meta-ExternalFetcher' => __( 'Meta AI per-user fetcher (live browsing)', 'aeomatic' ),
 				// Legacy entries — kept for backward compatibility with older saved settings.
-				'Claude-Web'         => __( 'Anthropic live browsing (deprecated — use Claude-User)', 'aeomatic' ),
-				'anthropic-ai'       => __( 'Legacy Anthropic crawler (deprecated)', 'aeomatic' ),
-				'DeepSeekBot'        => __( 'DeepSeek AI crawler', 'aeomatic' ),
-				'Cohere-AI'          => __( 'Cohere AI crawler (blocked by default)', 'aeomatic' ),
+				'Claude-Web'           => __( 'Anthropic live browsing (deprecated — use Claude-User)', 'aeomatic' ),
+				'anthropic-ai'         => __( 'Legacy Anthropic crawler (deprecated)', 'aeomatic' ),
+				'DeepSeekBot'          => __( 'DeepSeek AI crawler', 'aeomatic' ),
+				'Cohere-AI'            => __( 'Cohere AI crawler (blocked by default)', 'aeomatic' ),
+				'DuckAssistBot'        => __( 'DuckDuckGo AI answers fetcher', 'aeomatic' ),
 			);
 			foreach ( $aeomatic_bots as $aeomatic_bot => $aeomatic_allowed ) :
 				$aeomatic_desc = $aeomatic_bot_descriptions[ $aeomatic_bot ] ?? '';
@@ -220,6 +222,95 @@ settings_errors( 'aeomatic_messages' );
 					</td>
 				</tr>
 			<?php endforeach; ?>
+		</table>
+
+		<h2 class="title"><?php esc_html_e( 'Crawler visit log', 'aeomatic' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'AI bot visits are logged and purged daily by WP-Cron. Choose how long to keep entries; a hard ceiling of 500 rows still applies as a safety net against bot storms.', 'aeomatic' ); ?>
+		</p>
+
+		<?php
+		$aeomatic_log_days    = (int) ( $aeomatic_settings['log']['retention_days'] ?? 90 );
+		$aeomatic_log_summary = class_exists( 'AEOMATIC_Crawler_Log' )
+			? AEOMATIC_Crawler_Log::get_retention_summary()
+			: array();
+		$aeomatic_log_choices = array(
+			7   => __( '7 days', 'aeomatic' ),
+			30  => __( '30 days', 'aeomatic' ),
+			60  => __( '60 days', 'aeomatic' ),
+			90  => __( '90 days (recommended)', 'aeomatic' ),
+			180 => __( '180 days', 'aeomatic' ),
+			365 => __( '365 days', 'aeomatic' ),
+		);
+		if ( ! array_key_exists( $aeomatic_log_days, $aeomatic_log_choices ) ) {
+			$aeomatic_log_choices[ $aeomatic_log_days ] = sprintf(
+				/* translators: %d: custom retention days */
+				__( '%d days (custom)', 'aeomatic' ),
+				$aeomatic_log_days
+			);
+		}
+
+		$aeomatic_kept       = (int) ( $aeomatic_log_summary['kept'] ?? 0 );
+		$aeomatic_oldest_age = (int) ( $aeomatic_log_summary['oldest_age'] ?? 0 );
+		$aeomatic_purged_at  = (int) ( $aeomatic_log_summary['purged_at'] ?? 0 );
+		$aeomatic_purged_n   = (int) ( $aeomatic_log_summary['purged_last'] ?? 0 );
+		?>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="aeob-log-retention"><?php esc_html_e( 'Retention window', 'aeomatic' ); ?></label></th>
+				<td>
+					<select id="aeob-log-retention" name="aeob[log][retention_days]">
+						<?php foreach ( $aeomatic_log_choices as $aeomatic_days => $aeomatic_label ) : ?>
+							<option value="<?php echo esc_attr( (string) $aeomatic_days ); ?>" <?php selected( $aeomatic_log_days, $aeomatic_days ); ?>>
+								<?php echo esc_html( $aeomatic_label ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+					<p class="description">
+						<?php esc_html_e( 'Rows older than this window are purged nightly.', 'aeomatic' ); ?>
+					</p>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Log status', 'aeomatic' ); ?></th>
+				<td>
+					<div style="display:flex; gap:14px; flex-wrap:wrap; font-size:13px; padding:10px 14px; background:#f6f7f7; border-radius:6px; border-left:3px solid #5B3FFF; max-width:640px;">
+						<span>
+							<strong style="color:#1d2327;"><?php echo esc_html( number_format_i18n( $aeomatic_kept ) ); ?></strong>
+							<span style="color:#646970;">&nbsp;<?php esc_html_e( 'entries kept', 'aeomatic' ); ?></span>
+						</span>
+						<span style="color:#dcdcde;">·</span>
+						<span>
+							<span style="color:#646970;"><?php esc_html_e( 'Oldest:', 'aeomatic' ); ?></span>
+							<strong style="color:#1d2327;">
+								<?php
+								echo $aeomatic_oldest_age > 0
+									? esc_html( human_time_diff( time() - $aeomatic_oldest_age ) . ' ' . __( 'ago', 'aeomatic' ) )
+									: esc_html__( '—', 'aeomatic' );
+								?>
+							</strong>
+						</span>
+						<span style="color:#dcdcde;">·</span>
+						<span>
+							<span style="color:#646970;"><?php esc_html_e( 'Last purge:', 'aeomatic' ); ?></span>
+							<strong style="color:#1d2327;">
+								<?php
+								if ( $aeomatic_purged_at > 0 ) {
+									printf(
+										/* translators: 1: purged count, 2: relative time */
+										esc_html__( '%1$d rows, %2$s ago', 'aeomatic' ),
+										(int) $aeomatic_purged_n,
+										esc_html( human_time_diff( $aeomatic_purged_at ) )
+									);
+								} else {
+									esc_html_e( 'not yet run', 'aeomatic' );
+								}
+								?>
+							</strong>
+						</span>
+					</div>
+				</td>
+			</tr>
 		</table>
 
 		<h2 class="title"><?php esc_html_e( 'Audit', 'aeomatic' ); ?></h2>

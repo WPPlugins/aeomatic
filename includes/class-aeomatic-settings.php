@@ -58,16 +58,22 @@ class AEOMATIC_Settings {
 				'PerplexityBot'    => true,
 				'Perplexity-User'  => true,
 				'Google-Extended'  => true,
-				'CCBot'            => false,
-				'Bytespider'       => false,
-				'Amazonbot'        => true,
-				'Applebot-Extended'=> true,
-				'meta-externalagent' => true,
-				'DeepSeekBot'        => true,
-				'Cohere-AI'          => false,
+				'CCBot'                => false,
+				'Bytespider'           => false,
+				'Amazonbot'            => true,
+				'Applebot-Extended'    => true,
+				'meta-externalagent'   => true,
+				'Meta-ExternalFetcher' => true,
+				'DeepSeekBot'          => true,
+				'Cohere-AI'            => false,
+				'DuckAssistBot'        => true,
 			),
 			'robots'           => array(
 				'block_pdfs' => false,
+			),
+			'log'              => array(
+				// Days to retain AI crawler visit rows. Purged daily via WP-Cron.
+				'retention_days' => 90,
 			),
 			'audit'            => array(
 				'enabled'   => true,
@@ -178,6 +184,12 @@ class AEOMATIC_Settings {
 
 		if ( isset( $input['robots'] ) && is_array( $input['robots'] ) ) {
 			$out['robots']['block_pdfs'] = ! empty( $input['robots']['block_pdfs'] );
+		}
+
+		if ( isset( $input['log'] ) && is_array( $input['log'] ) ) {
+			$days = isset( $input['log']['retention_days'] ) ? absint( $input['log']['retention_days'] ) : 90;
+			// Clamp to a sane window: at least a week, at most a year.
+			$out['log']['retention_days'] = max( 7, min( 365, $days ) );
 		}
 
 		if ( isset( $input['audit'] ) && is_array( $input['audit'] ) ) {

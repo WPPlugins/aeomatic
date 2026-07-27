@@ -1,9 +1,11 @@
 /**
  * AEOmatic — AI based Answer Engine Optimization — Gutenberg editor sidebar.
  *
- * Three collapsible panels:
+ * Four collapsible panels:
  *  1. Schema Generator  — type detector + visual field editor + live JSON preview
  *  2. Audit             — 0-100 AEO score with actionable breakdown
+ *  3. AI Citation Gaps  — rules-based gap analysis with fix hints (1.1.3+)
+ *  4. Ask AI: Am I cited? — one-click open ChatGPT/Perplexity/Claude/Google AI with post title pre-filled (1.1.3+)
  *
  * Works like Webflow's schema generator:
  *  - Reads page content and auto-populates every field
@@ -413,6 +415,168 @@
 		);
 	};
 
+	// ── Gaps panel ────────────────────────────────────────────────────────
+	const sevColor = s => s === 'high' ? '#a32d2d' : s === 'medium' ? '#ba7517' : '#6e6e73';
+
+	const GapsPanel = ( { postId, isSavingPost } ) => {
+		const [ data, setData ] = useState( null );
+		const [ loading, setLoading ] = useState( false );
+		const [ error, setError ] = useState( null );
+		const [ fixing, setFixing ] = useState( null ); // gap code currently being fixed
+		const [ toast, setToast ] = useState( null );
+
+		const fetchGaps = ( force = false ) => {
+			if ( ! postId ) return;
+			setLoading( true );
+			const path = `${REST}/citation-gaps/${postId}${force ? '?force=1' : ''}`;
+			apiFetch( { path } )
+				.then( res => { setData( res ); setLoading( false ); setError( null ); } )
+				.catch( e => { setError( e.message ); setLoading( false ); } );
+		};
+
+		const applyFix = ( gapCode, fixAction ) => {
+			if ( ! postId || ! fixAction ) return;
+			setFixing( gapCode );
+			apiFetch( {
+				path:   `${REST}/citation-gaps/fix/${postId}`,
+				method: 'POST',
+				data:   { code: fixAction.code, params: fixAction.params || {} },
+			} )
+				.then( res => {
+					setFixing( null );
+					setToast( res && res.message ? res.message : __( 'Fix applied.', 'aeomatic' ) );
+					if ( res && res.gaps ) { setData( res.gaps ); }
+					setTimeout( () => setToast( null ), 3500 );
+				} )
+				.catch( e => {
+					setFixing( null );
+					setToast( __( 'Fix failed: ', 'aeomatic' ) + ( e && e.message ? e.message : 'unknown' ) );
+					setTimeout( () => setToast( null ), 5000 );
+				} );
+		};
+
+		useEffect( () => { fetchGaps(); }, [ postId ] );
+		useEffect( () => { if ( ! isSavingPost ) fetchGaps(); }, [ isSavingPost ] );
+
+		if ( loading ) return el( Spinner );
+		if ( error ) return el( 'p', { style: { color: '#a32d2d', fontSize: '12px' } }, error );
+		if ( ! data ) return null;
+
+		const gaps = ( data.gaps || [] ).filter( g => g.severity !== 'low' ).slice( 0, 5 );
+
+		return el( 'div', null,
+			el( ScoreBar, { score: data.score } ),
+			el( 'p', { style: { fontSize: '11px', color: '#888', margin: '0 0 8px' } },
+				gaps.length === 0
+					? __( 'No high or medium gaps found. Nice.', 'aeomatic' )
+					: sprintf( __( 'Showing top %d issue(s). Full list on the Citation Gaps page.', 'aeomatic' ), gaps.length )
+			),
+			el( Button, { variant: 'secondary', isSmall: true, onClick: () => fetchGaps( true ), style: { marginBottom: '10px' } },
+				__( 'Re-analyse', 'aeomatic' )
+			),
+			toast && el( 'div', {
+				style: {
+					background: '#eef7f0', border: '1px solid #a3d9b5', color: '#1a5c33',
+					padding: '6px 10px', borderRadius: '4px', fontSize: '11px', marginBottom: '8px'
+				}
+			}, toast ),
+			gaps.map( g => (
+				el( 'div', { key: g.code, style: { padding: '7px 0', borderBottom: '1px solid #f0f0f1' } },
+					el( 'div', { style: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: sevColor( g.severity ) } },
+						el( 'span', { style: { display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: sevColor( g.severity ) } } ),
+						g.title
+					),
+					el( 'div', { style: { fontSize: '11px', color: '#50575e', marginTop: '2px' } }, g.fix_hint ),
+					g.fix_action && el( Button, {
+						variant: 'primary',
+						isSmall: true,
+						disabled: fixing === g.code,
+						onClick: () => applyFix( g.code, g.fix_action ),
+						style: { marginTop: '6px' }
+					}, fixing === g.code
+						? __( 'Applying…', 'aeomatic' )
+						: ( g.fix_action.label || __( 'Quick fix', 'aeomatic' ) )
+					)
+				)
+			) )
+		);
+	};
+
+	// ── Ask AI Panel — "Am I cited?" one-click test ──────────────────────
+	const AskAiPanel = () => {
+		const postTitle = useSelect( s =>
+			s( 'core/editor' ).getEditedPostAttribute( 'title' ) || '', [] );
+
+		const [ query, setQuery ] = useState( '' );
+		const [ copied, setCopied ] = useState( '' );
+
+		useEffect( () => { setQuery( postTitle ); }, [ postTitle ] );
+
+		const engines = [
+			{ name: 'ChatGPT',    color: '#10a37f',
+			  build: q => `https://chatgpt.com/?q=${ encodeURIComponent( q ) }&hints=search` },
+			{ name: 'Perplexity', color: '#20808d',
+			  build: q => `https://www.perplexity.ai/search?q=${ encodeURIComponent( q ) }` },
+			{ name: 'Google AI',  color: '#4285f4',
+			  build: q => `https://www.google.com/search?q=${ encodeURIComponent( q ) }` },
+			{ name: 'Claude',     color: '#c88a53',
+			  build: () => 'https://claude.ai/new', copy: true },
+		];
+
+		const askEngine = engine => {
+			const q = query.trim();
+			if ( ! q ) return;
+			if ( engine.copy && navigator.clipboard ) {
+				navigator.clipboard.writeText( q ).then( () => {
+					setCopied( engine.name );
+					setTimeout( () => setCopied( '' ), 2500 );
+				} );
+			}
+			window.open( engine.build( q ), '_blank', 'noopener,noreferrer' );
+		};
+
+		return el( 'div', { style: { padding: '4px 0' } },
+			el( 'p', {
+				style: { fontSize: '12px', color: '#50575e', margin: '0 0 8px', lineHeight: 1.4 },
+			}, __( 'Type your question, then click an AI engine. It opens in a new tab — see for yourself whether your site gets cited.', 'aeomatic' ) ),
+
+			el( TextControl, {
+				label: __( 'Question to ask', 'aeomatic' ),
+				value: query,
+				onChange: setQuery,
+				placeholder: __( 'e.g. Best espresso machines under $500', 'aeomatic' ),
+			} ),
+
+			el( 'div', {
+				style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '8px' },
+			},
+				engines.map( engine => el( Button, {
+					key: engine.name,
+					variant: 'secondary',
+					onClick: () => askEngine( engine ),
+					disabled: ! query.trim(),
+					style: {
+						justifyContent: 'center',
+						borderColor: engine.color,
+						color: engine.color,
+						fontWeight: 600,
+					},
+				}, sprintf( __( 'Ask %s', 'aeomatic' ), engine.name ) ) )
+			),
+
+			copied && el( 'div', {
+				style: { marginTop: '8px' },
+			}, el( Notice, {
+				status: 'info',
+				isDismissible: false,
+			}, sprintf( __( 'Question copied to clipboard — paste it in the %s tab.', 'aeomatic' ), copied ) ) ),
+
+			el( 'p', {
+				style: { fontSize: '10px', color: '#888', margin: '10px 0 0', lineHeight: 1.4 },
+			}, __( 'If your site is quoted in the AI answer, your AEO signals are working. If not, check the AI Citation Gaps panel above.', 'aeomatic' ) )
+		);
+	};
+
 	// ── Sidebar root ──────────────────────────────────────────────────────
 	const Sidebar = () => {
 		const postId = useSelect( s => s( 'core/editor' ).getCurrentPostId(), [] );
@@ -432,6 +596,12 @@
 				),
 				el( PanelBody, { title: __( 'AEO Audit', 'aeomatic' ), initialOpen: false },
 					el( AuditPanel, { postId, isSavingPost } )
+				),
+				el( PanelBody, { title: __( 'AI Citation Gaps', 'aeomatic' ), initialOpen: false },
+					el( GapsPanel, { postId, isSavingPost } )
+				),
+				el( PanelBody, { title: __( 'Ask AI: Am I cited?', 'aeomatic' ), initialOpen: false },
+					el( AskAiPanel, null )
 				)
 			)
 		);

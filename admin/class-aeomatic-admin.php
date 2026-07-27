@@ -14,6 +14,7 @@ class AEOMATIC_Admin {
 	const MENU_SLUG    = 'aeomatic';
 	const NONCE_ACTION = 'aeomatic_save_settings';
 	const SLUG_ACTIVITY = 'aeomatic-activity';
+	const SLUG_GAPS     = 'aeomatic-citation-gaps';
 	const SLUG_SETTINGS = 'aeomatic-settings';
 
 	public function register(): void {
@@ -57,6 +58,15 @@ class AEOMATIC_Admin {
 
 		add_submenu_page(
 			self::MENU_SLUG,
+			__( 'AI Citation Gaps — AEOmatic', 'aeomatic' ),
+			__( 'Citation Gaps', 'aeomatic' ),
+			'manage_options',
+			self::SLUG_GAPS,
+			array( $this, 'render_gaps' )
+		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
 			__( 'Settings — AEOmatic', 'aeomatic' ),
 			__( 'Settings', 'aeomatic' ),
 			'manage_options',
@@ -67,8 +77,10 @@ class AEOMATIC_Admin {
 
 	public function plugin_links( array $links ): array {
 		$settings_url = admin_url( 'admin.php?page=' . self::SLUG_SETTINGS );
+		$wizard_url   = admin_url( 'admin.php?page=' . AEOMATIC_Wizard::SLUG );
 		array_unshift(
 			$links,
+			sprintf( '<a href="%s">%s</a>', esc_url( $wizard_url ), esc_html__( 'Setup wizard', 'aeomatic' ) ),
 			sprintf( '<a href="%s">%s</a>', esc_url( $settings_url ), esc_html__( 'Settings', 'aeomatic' ) )
 		);
 		return $links;
@@ -139,6 +151,10 @@ class AEOMATIC_Admin {
 
 	public function render_activity(): void {
 		require AEOMATIC_DIR . 'admin/views/activity.php';
+	}
+
+	public function render_gaps(): void {
+		require AEOMATIC_DIR . 'admin/views/gaps.php';
 	}
 
 	public function render_settings(): void {
