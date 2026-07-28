@@ -37,6 +37,7 @@ class AEOMATIC_Plugin {
 		( new AEOMATIC_Crawler_Control() )->register();
 		( new AEOMATIC_Audit() )->register();
 		( new AEOMATIC_Citation_Gaps() )->register();
+		( new AEOMATIC_AI_Readiness() )->register();
 		( new AEOMATIC_Blocks() )->register();
 		( new AEOMATIC_Verification() )->register();
 		( new AEOMATIC_Conflict_Detector() )->register();

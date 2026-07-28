@@ -13,9 +13,10 @@ class AEOMATIC_Admin {
 
 	const MENU_SLUG    = 'aeomatic';
 	const NONCE_ACTION = 'aeomatic_save_settings';
-	const SLUG_ACTIVITY = 'aeomatic-activity';
-	const SLUG_GAPS     = 'aeomatic-citation-gaps';
-	const SLUG_SETTINGS = 'aeomatic-settings';
+	const SLUG_ACTIVITY  = 'aeomatic-activity';
+	const SLUG_GAPS      = 'aeomatic-citation-gaps';
+	const SLUG_READINESS = 'aeomatic-ai-readiness';
+	const SLUG_SETTINGS  = 'aeomatic-settings';
 
 	public function register(): void {
 		add_action( 'admin_menu',             array( $this, 'add_menu' ) );
@@ -63,6 +64,15 @@ class AEOMATIC_Admin {
 			'manage_options',
 			self::SLUG_GAPS,
 			array( $this, 'render_gaps' )
+		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
+			__( 'AI Readiness — AEOmatic', 'aeomatic' ),
+			__( 'AI Readiness', 'aeomatic' ),
+			'manage_options',
+			self::SLUG_READINESS,
+			array( $this, 'render_readiness' )
 		);
 
 		add_submenu_page(
@@ -155,6 +165,10 @@ class AEOMATIC_Admin {
 
 	public function render_gaps(): void {
 		require AEOMATIC_DIR . 'admin/views/gaps.php';
+	}
+
+	public function render_readiness(): void {
+		require AEOMATIC_DIR . 'admin/views/ai-readiness.php';
 	}
 
 	public function render_settings(): void {

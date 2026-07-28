@@ -3,7 +3,7 @@
  * Plugin Name:       AEOmatic — Answer Engine Optimization, GEO, AIO, LLM SEO
  * Plugin URI:        https://wordpress.org/plugins/aeomatic/
  * Description:       Optimise your WordPress site for AI search engines (ChatGPT, Claude, Perplexity, Google AI Overviews). Auto-injects JSON-LD schema, generates llms.txt, controls AI crawlers, audits content for AEO readiness, and provides a FAQ block for answer engine extraction.
- * Version:           1.1.4
+ * Version:           1.1.5
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            mmtushar
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AEOMATIC_VERSION', '1.1.4' );
+define( 'AEOMATIC_VERSION', '1.1.5' );
 define( 'AEOMATIC_FILE', __FILE__ );
 define( 'AEOMATIC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AEOMATIC_URL', plugin_dir_url( __FILE__ ) );
@@ -44,6 +44,7 @@ require_once AEOMATIC_DIR . 'includes/class-aeomatic-llms-txt.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-crawler-control.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-audit.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-citation-gaps.php';
+require_once AEOMATIC_DIR . 'includes/class-aeomatic-ai-readiness.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-blocks.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-verification.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-conflict-detector.php';

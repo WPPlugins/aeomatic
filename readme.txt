@@ -2,9 +2,9 @@
 Contributors: mmtushar
 Tags: aeo, answer engine optimization, llms.txt, ai seo, schema
 Requires at least: 6.4
-Tested up to: 6.7
+Tested up to: 7.0.2
 Requires PHP: 8.0
-Stable tag: 1.1.4
+Stable tag: 1.1.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -41,6 +41,8 @@ AEOmatic fixes that. It runs alongside Yoast, Rank Math, AIOSEO, SEOPress, or Th
 * **AI crawler visit log** — records every recognised AI bot visit (bot name, URL, timestamp) in a capped log. See exactly how often GPTBot, ClaudeBot, or PerplexityBot crawl your site.
 
 * **AEO content audit** — every post scored 0–100 on the 10 signals that predict AI citation: direct opening answer, question-style headings, FAQ block, schema, author authority, internal links, structured content, image alt text, page weight, word count.
+
+* **AI Readiness (1.1.5+)** — a second scoring lens across five explicit categories (Content, Trust, Authority, Entities, Technical). Each category returns its own 0–100 score plus a per-category list of issues and recommendations, so you know exactly which axis is dragging the overall score down. Available as an **AEOmatic → AI Readiness** admin page with a post picker, and as an "AI Readiness" panel in the block-editor sidebar that auto-refreshes on save. Extensible via the `aeomatic_ai_readiness_analyzers` filter. Fully offline.
 
 * **Setup Wizard (1.1.4+)** — a five-step onboarding that runs on activation. Auto-imports organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework, with live JSON-LD preview and per-plugin opt-in. Never overwrites values you already set in AEOmatic. Fully offline.
 
@@ -183,6 +185,15 @@ AEOmatic does not collect, store, or transmit any personal data to external serv
 
 == Changelog ==
 
+= 1.1.5 =
+* **New: AI Readiness module.** A second scoring lens complementing the existing AEO Audit. Every post is scored 0–100 across five explicit categories — **Content**, **Trust**, **Authority**, **Entities**, **Technical** — with a per-category list of issues plus recommendations so you know precisely which axis needs work. Overall score is the mean of the five categories.
+* **New: AEOmatic → AI Readiness admin page.** Pick any published post from the recent-posts dropdown to run the analyzer on demand, or open a post via `?post={id}`. "Recompute (skip cache)" button forces a fresh analysis.
+* **New: "AI Readiness" panel in the block-editor sidebar.** Sits alongside the existing Schema, Audit, and Citation Gaps panels. Auto-loads on open, auto-refreshes after save, has its own recompute button.
+* New REST endpoint: `GET /aeomatic/v1/ai-readiness/{id}?force=false` — returns `{ overall_score, categories[], fingerprint, cached }`. Same auth model as `/audit/{id}` (edit_post capability check).
+* Fingerprint-based caching in post meta `_aeomatic_ai_readiness` (payload) + `_aeomatic_ai_readiness_fingerprint` (invalidation key) + `_aeomatic_ai_readiness_score` (overall score, exposed via REST). Cache auto-invalidates on `save_post`.
+* Analyzer registry is filterable via `aeomatic_ai_readiness_analyzers` so third-party code can add or replace categories without patching core.
+* Zero duplication: reuses `AEOMATIC_Content_Extractor`, `AEOMATIC_Schema_Analyzer`, `AEOMATIC_Schema_Generator`, `AEOMATIC_LLMs_Txt`, `AEOMATIC_Post_Types`, and `AEOMATIC_Settings`.
+
 = 1.1.4 =
 * **New: Setup Wizard.** Five-step guided onboarding runs automatically on activation. Auto-imports your organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework — never overwrites values you already set in AEOmatic. Live JSON-LD preview updates as you type. Fully offline; no accounts, no external calls. Re-runnable any time from the Plugins list.
 * **New: WordPress dashboard widget "AEO Readiness".** A compact tile on the native wp-admin dashboard showing average AEO score, count of posts with citation gaps, top three AI-bot visitors with a mini bar chart, and log-retention health. Colour-coded score chip so status reads at a glance.
@@ -240,23 +251,3 @@ AEOmatic does not collect, store, or transmit any personal data to external serv
 * Request-level settings cache — single DB read per page load.
 * Deferred activity counter writes — no DB writes on front-end page views.
 * All public custom post types auto-detected and supported.
-
-== Upgrade Notice ==
-
-= 1.1.4 =
-Adds a Setup Wizard (5 steps with live JSON-LD preview and auto-import from Yoast/Rank Math/SEOPress/AIOSEO/The SEO Framework), a WordPress dashboard widget with score + gap count + bot chart, a bulk "refresh audit & gaps" action on Posts/Pages list screens, hybrid 90-day/500-entry log retention, and two new AI crawlers (DuckAssistBot, Meta-ExternalFetcher). Fully offline. No re-flush required.
-
-= 1.1.3 =
-Adds "Ask AI: Am I cited?" — one-click buttons in the editor sidebar that open ChatGPT, Perplexity, Google AI, and Claude with your post title pre-filled, so you can verify AI citations yourself. Also adds AI Citation Gaps: 16 local rules with one-click quick-fixes, per-post sidebar panel, and a site-wide Citation Gaps admin page (title search, author filter, score range, date range). Fully offline; no external calls from your server. No re-flush required.
-
-= 1.1.2 =
-Anthropic crawler list corrected: adds Claude-User (the dominant Anthropic live-fetch UA), removes deprecated Claude-Web and anthropic-ai from the default allow-list. No re-flush required.
-
-= 1.1.1 =
-Documentation refresh. No code changes. No re-flush required.
-
-= 1.1.0 =
-llms.txt now includes ALL published posts and pages plus a new /llms-full.txt endpoint with full content. Go to Settings → Permalinks → Save Changes after updating.
-
-= 1.0.0 =
-First public release. After activation, go to Settings → Permalinks → Save Changes to activate the /llms.txt endpoint.

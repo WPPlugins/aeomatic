@@ -502,6 +502,74 @@
 		);
 	};
 
+	// ── AI Readiness Panel — 5-category scorecard ────────────────────────
+	const ReadinessPanel = ( { postId, isSavingPost } ) => {
+		const [ data,    setData    ] = useState( null );
+		const [ loading, setLoading ] = useState( true );
+		const [ error,   setError   ] = useState( '' );
+
+		const load = useCallback( ( force ) => {
+			if ( ! postId ) return;
+			setLoading( true );
+			setError( '' );
+			apiFetch( { path: `${REST}/ai-readiness/${postId}${ force ? '?force=true' : '' }` } )
+				.then( setData )
+				.catch( e => setError( ( e && e.message ) || __( 'Request failed', 'aeomatic' ) ) )
+				.finally( () => setLoading( false ) );
+		}, [ postId ] );
+
+		useEffect( () => { load( false ); }, [ load ] );
+		// Recompute on save.
+		useEffect( () => { if ( ! isSavingPost ) load( false ); }, [ isSavingPost, load ] );
+
+		if ( loading ) { return el( Spinner, null ); }
+		if ( error   ) { return el( Notice, { status: 'error', isDismissible: false }, error ); }
+		if ( ! data  ) { return null; }
+
+		const overall = data.overall_score || 0;
+		const cats    = data.categories || [];
+
+		const scorePill = ( n ) => el( 'span', {
+			style: {
+				display: 'inline-block', minWidth: 42, textAlign: 'center',
+				padding: '2px 8px', borderRadius: 999, background: scoreColor( n ),
+				color: '#fff', fontWeight: 700,
+			},
+		}, `${n}/100` );
+
+		return el( Fragment, null,
+			el( 'div', { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 } },
+				el( 'div', { style: { fontSize: 32, fontWeight: 700, color: scoreColor( overall ) } }, overall ),
+				el( 'div', null,
+					el( 'div', { style: { fontSize: 11, textTransform: 'uppercase', color: '#50575e' } }, __( 'Overall AI Readiness', 'aeomatic' ) ),
+					el( 'div', null, overall >= 70 ? __( 'Great', 'aeomatic' ) : ( overall >= 40 ? __( 'Needs work', 'aeomatic' ) : __( 'At risk', 'aeomatic' ) ) )
+				)
+			),
+			cats.map( ( c ) => el( 'div', {
+				key: c.category,
+				style: { border: '1px solid #dcdcde', borderRadius: 4, padding: 10, marginBottom: 8 },
+			},
+				el( 'div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+					el( 'strong', { style: { textTransform: 'capitalize' } }, c.category ),
+					scorePill( c.score )
+				),
+				( c.issues && c.issues.length )
+					? el( 'ul', { style: { margin: '8px 0 0 18px', color: '#a32d2d' } },
+						c.issues.map( ( i, k ) => el( 'li', { key: 'i' + k }, i ) )
+					)
+					: null,
+				( c.recommendations && c.recommendations.length )
+					? el( 'ul', { style: { margin: '6px 0 0 18px', color: '#1d5e40' } },
+						c.recommendations.map( ( r, k ) => el( 'li', { key: 'r' + k }, r ) )
+					)
+					: null
+			) ),
+			el( Button, { isSecondary: true, onClick: () => load( true ), style: { marginTop: 8 } },
+				__( 'Recompute (skip cache)', 'aeomatic' )
+			)
+		);
+	};
+
 	// ── Ask AI Panel — "Am I cited?" one-click test ──────────────────────
 	const AskAiPanel = () => {
 		const postTitle = useSelect( s =>
@@ -599,6 +667,9 @@
 				),
 				el( PanelBody, { title: __( 'AI Citation Gaps', 'aeomatic' ), initialOpen: false },
 					el( GapsPanel, { postId, isSavingPost } )
+				),
+				el( PanelBody, { title: __( 'AI Readiness', 'aeomatic' ), initialOpen: false },
+					el( ReadinessPanel, { postId, isSavingPost } )
 				),
 				el( PanelBody, { title: __( 'Ask AI: Am I cited?', 'aeomatic' ), initialOpen: false },
 					el( AskAiPanel, null )
