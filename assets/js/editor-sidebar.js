@@ -570,6 +570,71 @@
 		);
 	};
 
+	// ── Entity Scanner Panel — six-entity coverage scorecard ─────────────
+	const EntityScannerPanel = ( { postId, isSavingPost } ) => {
+		const [ data,    setData    ] = useState( null );
+		const [ loading, setLoading ] = useState( true );
+		const [ error,   setError   ] = useState( '' );
+
+		const load = useCallback( ( force ) => {
+			if ( ! postId ) return;
+			setLoading( true );
+			setError( '' );
+			apiFetch( { path: `${REST}/entity-scan/${postId}${ force ? '?force=true' : '' }` } )
+				.then( setData )
+				.catch( e => setError( ( e && e.message ) || __( 'Request failed', 'aeomatic' ) ) )
+				.finally( () => setLoading( false ) );
+		}, [ postId ] );
+
+		useEffect( () => { load( false ); }, [ load ] );
+		useEffect( () => { if ( ! isSavingPost ) load( false ); }, [ isSavingPost, load ] );
+
+		if ( loading ) { return el( Spinner, null ); }
+		if ( error   ) { return el( Notice, { status: 'error', isDismissible: false }, error ); }
+		if ( ! data  ) { return null; }
+
+		const cov = data.coverage_score || 0;
+		const entities = data.entities || [];
+		const title = ( s ) => s.replace( /_/g, ' ' ).replace( /\b\w/g, c => c.toUpperCase() );
+
+		return el( Fragment, null,
+			el( 'div', { style: { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 } },
+				el( 'div', { style: { fontSize: 32, fontWeight: 700, color: scoreColor( cov ) } }, cov ),
+				el( 'div', null,
+					el( 'div', { style: { fontSize: 11, textTransform: 'uppercase', color: '#50575e' } }, __( 'Entity Coverage', 'aeomatic' ) ),
+					el( 'div', null, cov >= 70 ? __( 'Strong', 'aeomatic' ) : ( cov >= 40 ? __( 'Partial', 'aeomatic' ) : __( 'Weak', 'aeomatic' ) ) )
+				)
+			),
+			entities.map( ( e ) => el( 'div', {
+				key: e.entity_type,
+				style: { border: '1px solid #dcdcde', borderRadius: 4, padding: 8, marginBottom: 6 },
+			},
+				el( 'div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+					el( 'strong', null, title( e.entity_type ) ),
+					el( 'span', {
+						style: {
+							minWidth: 42, textAlign: 'center', padding: '2px 8px', borderRadius: 999,
+							background: scoreColor( e.confidence ), color: '#fff', fontWeight: 700, fontSize: 12,
+						},
+					}, e.confidence )
+				),
+				( e.missing_signals && e.missing_signals.length )
+					? el( 'ul', { style: { margin: '6px 0 0 18px', color: '#a32d2d', fontSize: 12 } },
+						e.missing_signals.slice( 0, 3 ).map( ( m, k ) => el( 'li', { key: 'm' + k }, m ) )
+					)
+					: null,
+				( e.recommendations && e.recommendations.length )
+					? el( 'ul', { style: { margin: '4px 0 0 18px', color: '#1d5e40', fontSize: 12 } },
+						e.recommendations.slice( 0, 2 ).map( ( r, k ) => el( 'li', { key: 'r' + k }, r ) )
+					)
+					: null
+			) ),
+			el( Button, { isSecondary: true, onClick: () => load( true ), style: { marginTop: 8 } },
+				__( 'Rescan (skip cache)', 'aeomatic' )
+			)
+		);
+	};
+
 	// ── Ask AI Panel — "Am I cited?" one-click test ──────────────────────
 	const AskAiPanel = () => {
 		const postTitle = useSelect( s =>
@@ -670,6 +735,9 @@
 				),
 				el( PanelBody, { title: __( 'AI Readiness', 'aeomatic' ), initialOpen: false },
 					el( ReadinessPanel, { postId, isSavingPost } )
+				),
+				el( PanelBody, { title: __( 'Entity Scanner', 'aeomatic' ), initialOpen: false },
+					el( EntityScannerPanel, { postId, isSavingPost } )
 				),
 				el( PanelBody, { title: __( 'Ask AI: Am I cited?', 'aeomatic' ), initialOpen: false },
 					el( AskAiPanel, null )

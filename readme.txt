@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms.txt, ai seo, schema
 Requires at least: 6.4
 Tested up to: 7.0.2
 Requires PHP: 8.0
-Stable tag: 1.1.5
+Stable tag: 1.1.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,17 +42,19 @@ AEOmatic fixes that. It runs alongside Yoast, Rank Math, AIOSEO, SEOPress, or Th
 
 * **AEO content audit** — every post scored 0–100 on the 10 signals that predict AI citation: direct opening answer, question-style headings, FAQ block, schema, author authority, internal links, structured content, image alt text, page weight, word count.
 
-* **AI Readiness (1.1.5+)** — a second scoring lens across five explicit categories (Content, Trust, Authority, Entities, Technical). Each category returns its own 0–100 score plus a per-category list of issues and recommendations, so you know exactly which axis is dragging the overall score down. Available as an **AEOmatic → AI Readiness** admin page with a post picker, and as an "AI Readiness" panel in the block-editor sidebar that auto-refreshes on save. Extensible via the `aeomatic_ai_readiness_analyzers` filter. Fully offline.
+* **AI Readiness** — a second scoring lens across five explicit categories (Content, Trust, Authority, Entities, Technical). Each category returns its own 0–100 score plus a per-category list of issues and recommendations, so you know exactly which axis is dragging the overall score down. Available as an **AEOmatic → AI Readiness** admin page with a post picker, and as an "AI Readiness" panel in the block-editor sidebar that auto-refreshes on save. Extensible via the `aeomatic_ai_readiness_analyzers` filter. Fully offline.
 
-* **Setup Wizard (1.1.4+)** — a five-step onboarding that runs on activation. Auto-imports organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework, with live JSON-LD preview and per-plugin opt-in. Never overwrites values you already set in AEOmatic. Fully offline.
+* **Entity Scanner** — scans content, schema, headings, and metadata for six entity types: **Organization**, **Person**, **Service**, **Product**, **LocalBusiness**, **FAQ**. Returns an overall coverage score, list of missing entities, and per-entity confidence with detected signals, missing signals, and actionable recommendations. Available as an **AEOmatic → Entity Scanner** admin page and an "Entity Scanner" panel in the block-editor sidebar. Built on a reusable signal-collector service so all six detectors share one extraction pass. Extensible via the `aeomatic_entity_detectors` filter. Fully offline.
 
-* **WordPress dashboard widget (1.1.4+)** — "AEO Readiness" tile on the native wp-admin dashboard: average AEO score, posts with citation gaps, top three AI-bot visitors with a mini bar chart, and log-retention health.
+* **Setup Wizard** — a five-step onboarding that runs on activation. Auto-imports organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework, with live JSON-LD preview and per-plugin opt-in. Never overwrites values you already set in AEOmatic. Fully offline.
 
-* **Bulk audit action (1.1.4+)** — one bulk action on Posts/Pages/CPT list screens re-runs the audit and citation-gap analysers across selected rows. Admin notice shows average scores, total gaps flagged, and a per-post score table.
+* **WordPress dashboard widget** — "AEO Readiness" tile on the native wp-admin dashboard: average AEO score, posts with citation gaps, top three AI-bot visitors with a mini bar chart, and log-retention health.
 
-* **Ask AI — "Am I cited?" (1.1.3+)** — four one-click buttons in the editor sidebar (ChatGPT, Perplexity, Google AI, Claude). Opens each engine in a new tab with your post title pre-filled as the question, so you can check for yourself whether your site is quoted in the AI answer. No API keys, no accounts, no external calls from your server — just links your browser opens.
+* **Bulk audit action** — one bulk action on Posts/Pages/CPT list screens re-runs the audit and citation-gap analysers across selected rows. Admin notice shows average scores, total gaps flagged, and a per-post score table.
 
-* **AI Citation Gaps (1.1.3+)** — sixteen local, rules-based checks that flag exactly why a page won't get cited by AI engines: orphan pages, missing opening answer, no FAQ block, schema type mismatch, low internal-link count, sibling-topic gaps by category, and more. Runs per-post in the block editor sidebar and site-wide from **AEOmatic → Citation Gaps**. Each gap ships with a one-line fix hint plus a one-click quick-fix where possible. Fully offline; no external calls.
+* **Ask AI — "Am I cited?"** — four one-click buttons in the editor sidebar (ChatGPT, Perplexity, Google AI, Claude). Opens each engine in a new tab with your post title pre-filled as the question, so you can check for yourself whether your site is quoted in the AI answer. No API keys, no accounts, no external calls from your server — just links your browser opens.
+
+* **AI Citation Gaps** — sixteen local, rules-based checks that flag exactly why a page won't get cited by AI engines: orphan pages, missing opening answer, no FAQ block, schema type mismatch, low internal-link count, sibling-topic gaps by category, and more. Runs per-post in the block editor sidebar and site-wide from **AEOmatic → Citation Gaps**. Each gap ships with a one-line fix hint plus a one-click quick-fix where possible. Fully offline; no external calls.
 
 * **FAQ Gutenberg block** — native Q&A block with accessible `<details>/<summary>` HTML and automatic FAQPage JSON-LD. No configuration needed.
 
@@ -166,7 +168,7 @@ Yes, that's the whole point. AEOmatic generates the structured signals (schema, 
 
 = What is the new AI Citation Gaps feature? =
 
-A local, rules-based analyser (1.1.3+) that runs 16 checks on every post and page and flags the specific reasons a page is unlikely to be cited by AI engines — orphan pages, missing opening answers, FAQ content without FAQPage schema, low-confidence schema types, missing meta descriptions, missing from llms.txt, and more. Each gap comes with a one-line fix hint and — for structurally fixable gaps — a one-click quick-fix button. Available in the block editor sidebar per-post and as a site-wide **AEOmatic → Citation Gaps** table sorted worst-first. No external API calls; no keys, no account. Deeper LLM-powered gap analysis is planned for the Pro tier separately.
+A local, rules-based analyser that runs 16 checks on every post and page and flags the specific reasons a page is unlikely to be cited by AI engines — orphan pages, missing opening answers, FAQ content without FAQPage schema, low-confidence schema types, missing meta descriptions, missing from llms.txt, and more. Each gap comes with a one-line fix hint and — for structurally fixable gaps — a one-click quick-fix button. Available in the block editor sidebar per-post and as a site-wide **AEOmatic → Citation Gaps** table sorted worst-first. No external API calls; no keys, no account. Deeper LLM-powered gap analysis is planned for the Pro tier separately.
 
 = What happens when I uninstall AEOmatic? =
 
@@ -184,6 +186,9 @@ Deactivating the plugin stops the AI crawler visit log, unregisters the `/llms.t
 AEOmatic does not collect, store, or transmit any personal data to external servers. Schema, `llms.txt`, `/llms-full.txt`, and AI HTTP headers are generated server-side on your own site. The verification panel makes HTTP requests only to your own site to confirm the public output. The AI crawler visit log records bot user-agent strings, requested URLs, and timestamps in your own database — this is bot metadata, not visitor data, and never leaves your site. AEOmatic makes no external API calls on the front-end and ships with no third-party analytics or telemetry.
 
 == Changelog ==
+
+= 1.1.6 =
+* **New: Entity Scanner module.** Scans every post across four sources (content, schema, headings, metadata) for six entity types — **Organization**, **Person**, **Service**, **Product**, **LocalBusiness**, **FAQ** — and returns a coverage score, list of missing entities, and per-entity recommendations to raise confidence. New **AEOmatic → Entity Scanner** admin page and Gutenberg sidebar panel. New REST endpoint `GET /aeomatic/v1/entity-scan/{id}`. Fingerprint-cached in post meta. Filter hook `aeomatic_entity_detectors` for custom detectors. Ships one reusable signal-collector service consumed by all six detectors — no code duplication with existing extraction.
 
 = 1.1.5 =
 * **New: AI Readiness module.** A second scoring lens complementing the existing AEO Audit. Every post is scored 0–100 across five explicit categories — **Content**, **Trust**, **Authority**, **Entities**, **Technical** — with a per-category list of issues plus recommendations so you know precisely which axis needs work. Overall score is the mean of the five categories.

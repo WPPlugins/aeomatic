@@ -13,10 +13,11 @@ class AEOMATIC_Admin {
 
 	const MENU_SLUG    = 'aeomatic';
 	const NONCE_ACTION = 'aeomatic_save_settings';
-	const SLUG_ACTIVITY  = 'aeomatic-activity';
-	const SLUG_GAPS      = 'aeomatic-citation-gaps';
-	const SLUG_READINESS = 'aeomatic-ai-readiness';
-	const SLUG_SETTINGS  = 'aeomatic-settings';
+	const SLUG_ACTIVITY   = 'aeomatic-activity';
+	const SLUG_GAPS       = 'aeomatic-citation-gaps';
+	const SLUG_READINESS  = 'aeomatic-ai-readiness';
+	const SLUG_ENTITY_SCAN = 'aeomatic-entity-scanner';
+	const SLUG_SETTINGS   = 'aeomatic-settings';
 
 	public function register(): void {
 		add_action( 'admin_menu',             array( $this, 'add_menu' ) );
@@ -73,6 +74,15 @@ class AEOMATIC_Admin {
 			'manage_options',
 			self::SLUG_READINESS,
 			array( $this, 'render_readiness' )
+		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
+			__( 'Entity Scanner — AEOmatic', 'aeomatic' ),
+			__( 'Entity Scanner', 'aeomatic' ),
+			'manage_options',
+			self::SLUG_ENTITY_SCAN,
+			array( $this, 'render_entity_scanner' )
 		);
 
 		add_submenu_page(
@@ -169,6 +179,10 @@ class AEOMATIC_Admin {
 
 	public function render_readiness(): void {
 		require AEOMATIC_DIR . 'admin/views/ai-readiness.php';
+	}
+
+	public function render_entity_scanner(): void {
+		require AEOMATIC_DIR . 'admin/views/entity-scanner.php';
 	}
 
 	public function render_settings(): void {
