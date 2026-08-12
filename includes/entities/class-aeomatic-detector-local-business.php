@@ -35,12 +35,22 @@ class AEOMATIC_Detector_Local_Business implements AEOMATIC_Entity_Detector_Inter
 		$has_address_setting = $signals->organization_setting( 'street' ) !== ''
 			|| $signals->organization_setting( 'address' ) !== ''
 			|| $signals->organization_setting( 'city' ) !== '';
-		if ( $has_address_setting ) {
+		// The Schema Generator sidebar exposes address on the LocalBusiness
+		// schema itself — accept either source so users who configure per-page
+		// aren't punished for the Settings UI not having address fields yet.
+		$has_address_schema = (bool) $signals->schema_override( 'address' )
+			|| (bool) $signals->schema_override( 'streetAddress' )
+			|| (bool) $signals->schema_override( 'addressLocality' );
+		if ( $has_address_setting || $has_address_schema ) {
 			$score += 20;
-			$found[] = __( 'Organisation address configured in settings.', 'aeomatic' );
+			$found[] = $has_address_schema && ! $has_address_setting
+				? __( 'Address set on the LocalBusiness schema for this page.', 'aeomatic' )
+				: __( 'Organisation address configured in settings.', 'aeomatic' );
 		} else {
-			$missing[]         = __( 'No organisation address in settings.', 'aeomatic' );
-			$recommendations[] = __( 'Add the business street / city / region in AEOmatic → Settings.', 'aeomatic' );
+			$missing[]         = __( 'No organisation address in settings or on the page schema.', 'aeomatic' );
+			$recommendations[] = $signals->is_block_editor()
+				? __( 'Set the address on this page\'s LocalBusiness schema (Schema Generator sidebar), or add it site-wide in AEOmatic → Settings.', 'aeomatic' )
+				: __( 'Add the business address to this page\'s LocalBusiness schema — edit the post in the block editor to use the Schema Generator, or use the aeomatic_schema_overrides filter. Alternatively add it site-wide in AEOmatic → Settings.', 'aeomatic' );
 		}
 
 		if ( $signals->has_nap_pattern() ) {
@@ -65,7 +75,9 @@ class AEOMATIC_Detector_Local_Business implements AEOMATIC_Entity_Detector_Inter
 			$found[] = __( 'Opening hours in schema.', 'aeomatic' );
 		} else {
 			$missing[]         = __( 'No opening hours in schema.', 'aeomatic' );
-			$recommendations[] = __( 'Set openingHours in the Schema Generator so AI answers can quote your hours.', 'aeomatic' );
+			$recommendations[] = $signals->is_block_editor()
+				? __( 'Set openingHours in the Schema Generator so AI answers can quote your hours.', 'aeomatic' )
+				: __( 'Set openingHours on this page\'s LocalBusiness schema — edit the post in the block editor to use the Schema Generator, or set it via the aeomatic_schema_overrides filter.', 'aeomatic' );
 		}
 
 		$detected = $score >= AEOMATIC_Entity_Scanner::detected_threshold();

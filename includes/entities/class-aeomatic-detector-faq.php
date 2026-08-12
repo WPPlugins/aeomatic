@@ -33,10 +33,12 @@ class AEOMATIC_Detector_Faq implements AEOMATIC_Entity_Detector_Interface {
 
 		if ( $signals->has_faq_block() ) {
 			$score += 30;
-			$found[] = __( 'AEOmatic FAQ block present in body.', 'aeomatic' );
+			$found[] = __( 'FAQ content detected in body.', 'aeomatic' );
 		} else {
-			$missing[]         = __( 'No AEOmatic FAQ block in body.', 'aeomatic' );
-			$recommendations[] = __( 'Insert the AEOmatic FAQ block — it auto-generates FAQPage schema and improves citation odds.', 'aeomatic' );
+			$missing[]         = __( 'No FAQ block, accordion, or Q&A pattern in body.', 'aeomatic' );
+			$recommendations[] = $signals->is_block_editor()
+				? __( 'Insert the AEOmatic FAQ block — it auto-generates FAQPage schema and improves citation odds.', 'aeomatic' )
+				: $this->builder_faq_hint( $signals->builder() );
 		}
 
 		if ( $signals->has_question_heading() ) {
@@ -57,5 +59,28 @@ class AEOMATIC_Detector_Faq implements AEOMATIC_Entity_Detector_Interface {
 
 		$detected = $score >= AEOMATIC_Entity_Scanner::detected_threshold();
 		return new AEOMATIC_Entity_Detection_Result( 'faq', $detected, $score, $found, $missing, $recommendations );
+	}
+
+	/**
+	 * Build a builder-specific FAQ recommendation so users see wording that
+	 * matches their actual editor. The shared content extractor already
+	 * recognises FAQ output from every builder listed here — the recommendation
+	 * just needs to name the widget the user has.
+	 */
+	private function builder_faq_hint( string $builder ): string {
+		switch ( $builder ) {
+			case 'elementor':
+				return __( 'Add an Elementor Toggle or Accordion widget with your Q&As — AEOmatic will detect it and emit FAQPage schema.', 'aeomatic' );
+			case 'divi':
+				return __( 'Add a Divi Toggle or Accordion module with your Q&As — AEOmatic will detect it and emit FAQPage schema.', 'aeomatic' );
+			case 'wpbakery':
+				return __( 'Add a WPBakery Toggle or Accordion element with your Q&As — AEOmatic will detect it and emit FAQPage schema.', 'aeomatic' );
+			case 'beaver':
+			case 'bricks':
+			case 'oxygen':
+				return __( 'Add an accordion / toggle module in your builder with your Q&As. AEOmatic will detect the Q&A structure and emit FAQPage schema.', 'aeomatic' );
+			default:
+				return __( 'Add an ACF FAQ repeater, an accordion module, or Q&A headings. AEOmatic will detect the structure and emit FAQPage schema.', 'aeomatic' );
+		}
 	}
 }

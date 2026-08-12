@@ -61,7 +61,9 @@ class AEOMATIC_Detector_Service implements AEOMATIC_Entity_Detector_Interface {
 			$found[] = __( 'Provider or areaServed schema property set.', 'aeomatic' );
 		} else {
 			$missing[]         = __( 'No provider / areaServed schema property.', 'aeomatic' );
-			$recommendations[] = __( 'Set provider (link to your Organization) and areaServed in the Schema Generator sidebar.', 'aeomatic' );
+			$recommendations[] = $signals->is_block_editor()
+				? __( 'Set provider (link to your Organization) and areaServed in the Schema Generator sidebar.', 'aeomatic' )
+				: __( 'Set provider (link to your Organization) and areaServed on this page\'s Service schema — edit the post in the block editor to use the Schema Generator, or set them via the aeomatic_schema_overrides filter.', 'aeomatic' );
 		}
 
 		$detected = $score >= AEOMATIC_Entity_Scanner::detected_threshold();

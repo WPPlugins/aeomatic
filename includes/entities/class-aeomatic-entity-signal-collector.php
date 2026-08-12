@@ -25,11 +25,14 @@ final class AEOMATIC_Entity_Signal_Collector {
 	/** @var WP_Post */
 	private $post;
 
-	/** @var string cached plain-text body */
+	/** @var string cached plain-text body (includes ACF + page builder content) */
 	private $plain;
 
-	/** @var string cached raw HTML body */
+	/** @var string cached HTML body (includes ACF wysiwyg + page builder markup) */
 	private $html;
+
+	/** @var array cached FAQ pairs extracted from any source (Gutenberg block, ACF repeater, shortcode, etc.) */
+	private $extracted_faqs;
 
 	/** @var string[] cached heading strings (H1-H4) */
 	private $headings;
@@ -43,17 +46,30 @@ final class AEOMATIC_Entity_Signal_Collector {
 	/** @var array cached schema property overrides */
 	private $schema_overrides;
 
-	/** @var array cached organisation settings */
+	/** @var array normalised organisation settings (name, logo, sameas, address, ...) */
 	private $org_settings;
+
+	/** @var string detected editor / page builder (gutenberg|classic|elementor|divi|beaver|bricks|oxygen|wpbakery|unknown) */
+	private $builder = 'gutenberg';
 
 	public function __construct( WP_Post $post ) {
 		$this->post = $post;
 
-		$this->html = (string) $post->post_content;
-
-		$this->plain = class_exists( 'AEOMATIC_Content_Extractor' ) && method_exists( 'AEOMATIC_Content_Extractor', 'extract_text' )
-			? (string) AEOMATIC_Content_Extractor::extract_text( $post )
-			: trim( (string) wp_strip_all_tags( $this->html ) );
+		// Prefer the shared extractor — it merges post_content, ACF fields, and
+		// every supported page builder into one HTML+text pair. Fall back to
+		// post_content only if the extractor is missing.
+		if ( class_exists( 'AEOMATIC_Content_Extractor' ) && method_exists( 'AEOMATIC_Content_Extractor', 'extract' ) ) {
+			$extracted            = (array) AEOMATIC_Content_Extractor::extract( $post );
+			$this->html           = (string) ( $extracted['html'] ?? $post->post_content );
+			$this->plain          = (string) ( $extracted['text'] ?? trim( (string) wp_strip_all_tags( $this->html ) ) );
+			$this->extracted_faqs = (array)  ( $extracted['faqs'] ?? array() );
+			$this->builder        = (string) ( $extracted['builder'] ?? 'gutenberg' );
+		} else {
+			$this->html           = (string) $post->post_content;
+			$this->plain          = trim( (string) wp_strip_all_tags( $this->html ) );
+			$this->extracted_faqs = array();
+			$this->builder        = 'gutenberg';
+		}
 
 		$this->headings = $this->extract_headings( $this->html );
 
@@ -61,13 +77,23 @@ final class AEOMATIC_Entity_Signal_Collector {
 		$this->assigned_type   = $this->load_assigned_schema_type();
 		$this->schema_overrides = $this->load_schema_overrides();
 
-		$this->org_settings = class_exists( 'AEOMATIC_Settings' )
-			? (array) AEOMATIC_Settings::get( 'organization' )
-			: array();
+		$this->org_settings = $this->load_org_settings();
 	}
 
 	// ── Post ──────────────────────────────────────────────────────────────
 	public function post(): WP_Post { return $this->post; }
+
+	/**
+	 * Detected editor / page builder for this post.
+	 * Detectors use this to phrase recommendations in ways the user can actually act on
+	 * (e.g. "insert an FAQ accordion" for Elementor vs. "insert the FAQ block" for Gutenberg).
+	 */
+	public function builder(): string { return $this->builder; }
+
+	/** True when the post is authored in the block editor (or classic + no builder plugin). */
+	public function is_block_editor(): bool {
+		return in_array( $this->builder, array( 'gutenberg', 'classic', 'unknown' ), true );
+	}
 
 	// ── Content signals ───────────────────────────────────────────────────
 	public function content_plain(): string { return $this->plain; }
@@ -188,6 +214,13 @@ final class AEOMATIC_Entity_Signal_Collector {
 
 	// ── FAQ marker ────────────────────────────────────────────────────────
 	public function has_faq_block(): bool {
+		// Count any FAQ source the content extractor could find — Gutenberg
+		// block, ACF repeater, Elementor/Divi/WPBakery accordion, shortcode,
+		// or universal HTML Q&A. Restricting to `wp:aeomatic/faq` markers
+		// missed every non-Gutenberg builder and every ACF site.
+		if ( ! empty( $this->extracted_faqs ) ) {
+			return true;
+		}
 		return stripos( $this->html, 'wp:aeomatic/faq' ) !== false
 			|| stripos( $this->html, 'wp:core/block/faq' ) !== false;
 	}
@@ -233,5 +266,34 @@ final class AEOMATIC_Entity_Signal_Collector {
 			: '_aeomatic_schema_overrides';
 		$raw = get_post_meta( $this->post->ID, $key, true );
 		return is_array( $raw ) ? $raw : array();
+	}
+
+	/**
+	 * Load organisation-scope settings and normalise the key names the
+	 * detectors expect.
+	 *
+	 * The plugin stores org config under the `schema` section as `org_name`,
+	 * `org_logo`, `org_sameas`. Detectors ask for `name`, `logo`, `sameas`.
+	 * This method bridges the two so callers don't need to know the storage
+	 * layout. Address keys are exposed even though Settings has no UI for
+	 * them yet — the LocalBusiness detector will still find them once
+	 * they're wired up, and returns `''` cleanly today.
+	 */
+	private function load_org_settings(): array {
+		if ( ! class_exists( 'AEOMATIC_Settings' ) ) {
+			return array();
+		}
+		$schema = (array) AEOMATIC_Settings::get( 'schema' );
+		$org    = (array) AEOMATIC_Settings::get( 'organization' ); // future-proof if a real section is added
+		return array(
+			'name'   => (string) ( $org['name']   ?? $schema['org_name']   ?? '' ),
+			'logo'   => (string) ( $org['logo']   ?? $schema['org_logo']   ?? '' ),
+			'sameas' => (string) ( $org['sameas'] ?? $schema['org_sameas'] ?? '' ),
+			'street' => (string) ( $org['street'] ?? $schema['org_street'] ?? '' ),
+			'address'=> (string) ( $org['address']?? $schema['org_address']?? '' ),
+			'city'   => (string) ( $org['city']   ?? $schema['org_city']   ?? '' ),
+			'region' => (string) ( $org['region'] ?? $schema['org_region'] ?? '' ),
+			'phone'  => (string) ( $org['phone']  ?? $schema['org_phone']  ?? '' ),
+		);
 	}
 }

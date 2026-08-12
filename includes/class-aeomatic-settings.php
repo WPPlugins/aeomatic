@@ -124,7 +124,15 @@ class AEOMATIC_Settings {
 		$current     = self::all();
 		$clean       = self::sanitise( $input, $current );
 		self::$cache = null; // invalidate so the next all() re-reads from DB
-		return update_option( AEOMATIC_OPTION_KEY, $clean );
+		$ok          = update_option( AEOMATIC_OPTION_KEY, $clean );
+		// Post_Types keeps its own static map populated on `init` (before
+		// admin_init runs the save). Without this flush, the settings view
+		// re-renders from the stale map and post-type checkboxes appear
+		// unchecked even though the DB has them checked.
+		if ( class_exists( 'AEOMATIC_Post_Types' ) ) {
+			AEOMATIC_Post_Types::flush_cache();
+		}
+		return $ok;
 	}
 
 	/**

@@ -418,9 +418,13 @@ class AEOMATIC_Content_Extractor {
 	}
 
 	/**
-	 * Detect Q&A patterns in ACF repeater data using the cached text plus a
-	 * structured pass through the repeater rows. Looks for repeaters where one
-	 * sub-field name contains "question" and another contains "answer".
+	 * Detect Q&A patterns in ACF data. Walks the full field tree so Q&As are
+	 * found whether they live in a top-level repeater, a nested repeater inside
+	 * a group, a flexible_content layout with question/answer sub-fields, or a
+	 * repeater nested inside a flexible_content layout.
+	 *
+	 * Recognises any container whose sub-fields include one field with
+	 * "question" in its name and another with "answer" in its name.
 	 *
 	 * Uses the safe-context guard from `extract_acf_fields()` — never invokes
 	 * ACF's getter API during a live frontend render.
@@ -445,37 +449,142 @@ class AEOMATIC_Content_Extractor {
 			}
 			$parent = $field['parent'] ?? '';
 			if ( $parent && str_starts_with( (string) $parent, 'field_' ) ) {
-				continue; // sub-field instance — handled via parent
+				continue; // sub-field instance — handled via its parent container
 			}
-			if ( ( $field['type'] ?? '' ) !== 'repeater' ) {
-				continue;
-			}
-			$rows       = is_array( $field['value'] ?? null ) ? $field['value'] : array();
-			$sub_fields = $field['sub_fields'] ?? array();
-			$q_key = $a_key = '';
-			foreach ( $sub_fields as $sf ) {
-				$name = strtolower( (string) ( $sf['name'] ?? '' ) );
-				if ( '' === $q_key && false !== strpos( $name, 'question' ) ) {
-					$q_key = $sf['name'];
-				} elseif ( '' === $a_key && false !== strpos( $name, 'answer' ) ) {
-					$a_key = $sf['name'];
-				}
-			}
-			if ( '' === $q_key || '' === $a_key ) {
-				continue;
-			}
-			foreach ( $rows as $row ) {
+			self::walk_acf_field_for_faqs( $field, $pairs );
+		}
+		return $pairs;
+	}
+
+	/**
+	 * Recursively probe a single ACF field object for Q&A rows. Handles
+	 * repeater, group, and flexible_content containers to any depth.
+	 */
+	private static function walk_acf_field_for_faqs( array $field, array &$pairs ): void {
+		$type  = $field['type']  ?? '';
+		$value = $field['value'] ?? null;
+		if ( ! is_array( $value ) ) {
+			return;
+		}
+
+		if ( 'repeater' === $type ) {
+			$sub_fields = (array) ( $field['sub_fields'] ?? array() );
+			self::extract_qa_from_rows( $value, $sub_fields, $pairs );
+			self::walk_acf_rows_for_faqs( $value, $sub_fields, $pairs );
+			return;
+		}
+
+		if ( 'group' === $type ) {
+			$sub_fields = (array) ( $field['sub_fields'] ?? array() );
+			$rows       = array( $value ); // group value is a single row
+			self::extract_qa_from_rows( $rows, $sub_fields, $pairs );
+			self::walk_acf_rows_for_faqs( $rows, $sub_fields, $pairs );
+			return;
+		}
+
+		if ( 'flexible_content' === $type ) {
+			$layouts = (array) ( $field['layouts'] ?? array() );
+			foreach ( $value as $row ) {
 				if ( ! is_array( $row ) ) {
 					continue;
 				}
-				$q = self::clean_qa_text( $row[ $q_key ] ?? '' );
-				$a = self::clean_qa_text( $row[ $a_key ] ?? '' );
-				if ( self::is_valid_qa( $q, $a ) ) {
-					$pairs[] = array( 'q' => $q, 'a' => $a );
-				}
+				$layout_name       = (string) ( $row['acf_fc_layout'] ?? '' );
+				$layout_sub_fields = self::find_flex_layout_sub_fields( $layouts, $layout_name );
+				// Each flexible_content row is one layout instance — treat it as a single-row
+				// container so a layout with question/answer sub-fields counts as one Q&A.
+				self::extract_qa_from_rows( array( $row ), $layout_sub_fields, $pairs );
+				self::walk_acf_rows_for_faqs( array( $row ), $layout_sub_fields, $pairs );
 			}
 		}
-		return $pairs;
+	}
+
+	/**
+	 * Locate a flexible_content layout definition by its `name` (falls back to key match).
+	 */
+	private static function find_flex_layout_sub_fields( array $layouts, string $layout_name ): array {
+		if ( '' === $layout_name || empty( $layouts ) ) {
+			return array();
+		}
+		foreach ( $layouts as $key => $layout ) {
+			if ( ! is_array( $layout ) ) {
+				continue;
+			}
+			if ( ( $layout['name'] ?? '' ) === $layout_name || $key === $layout_name ) {
+				return (array) ( $layout['sub_fields'] ?? array() );
+			}
+		}
+		return array();
+	}
+
+	/**
+	 * If the given sub_fields include a "question" field and an "answer" field,
+	 * extract Q&A pairs from each row.
+	 */
+	private static function extract_qa_from_rows( array $rows, array $sub_fields, array &$pairs ): void {
+		$q_key = $a_key = '';
+		foreach ( $sub_fields as $sf ) {
+			if ( ! is_array( $sf ) ) {
+				continue;
+			}
+			$name = strtolower( (string) ( $sf['name'] ?? '' ) );
+			if ( '' === $q_key && false !== strpos( $name, 'question' ) ) {
+				$q_key = (string) $sf['name'];
+			} elseif ( '' === $a_key && false !== strpos( $name, 'answer' ) ) {
+				$a_key = (string) $sf['name'];
+			}
+		}
+		if ( '' === $q_key || '' === $a_key ) {
+			return;
+		}
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			$q = self::clean_qa_text( $row[ $q_key ] ?? '' );
+			$a = self::clean_qa_text( $row[ $a_key ] ?? '' );
+			if ( self::is_valid_qa( $q, $a ) ) {
+				$pairs[] = array( 'q' => $q, 'a' => $a );
+			}
+		}
+	}
+
+	/**
+	 * Descend into nested containers within a set of rows and continue probing
+	 * for Q&A patterns. Complements extract_qa_from_rows: that method looks at
+	 * the current level; this one recurses one level deeper into any nested
+	 * repeater / group / flexible_content sub-field.
+	 */
+	private static function walk_acf_rows_for_faqs( array $rows, array $sub_fields, array &$pairs ): void {
+		$defs = array();
+		foreach ( $sub_fields as $sf ) {
+			if ( is_array( $sf ) && isset( $sf['name'] ) ) {
+				$defs[ (string) $sf['name'] ] = $sf;
+			}
+		}
+		foreach ( $rows as $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+			foreach ( $row as $key => $val ) {
+				if ( 'acf_fc_layout' === $key ) {
+					continue;
+				}
+				$def     = $defs[ $key ] ?? null;
+				$sf_type = is_array( $def ) ? (string) ( $def['type'] ?? '' ) : '';
+				if ( '' === $sf_type || ! is_array( $val ) ) {
+					continue;
+				}
+				// Synthesise a field-like array and recurse via the same walker.
+				$synth = array( 'type' => $sf_type, 'value' => $val );
+				if ( isset( $def['sub_fields'] ) ) {
+					$synth['sub_fields'] = $def['sub_fields'];
+				}
+				if ( isset( $def['layouts'] ) ) {
+					$synth['layouts'] = $def['layouts'];
+				}
+				self::walk_acf_field_for_faqs( $synth, $pairs );
+			}
+		}
 	}
 
 	/**
