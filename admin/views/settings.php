@@ -28,6 +28,7 @@ settings_errors( 'aeomatic_messages' );
 				<strong><?php esc_html_e( 'SEO plugin status:', 'aeomatic' ); ?></strong>
 				<?php echo wp_kses_post( AEOMATIC_Conflict_Detector::get_status_html() ); ?>
 			</p>
+			<?php echo AEOMATIC_Conflict_Detector::get_diagnostic_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- output is self-escaped inside get_diagnostic_html() ?>
 		<?php endif; ?>
 		<table class="form-table" role="presentation">
 			<?php

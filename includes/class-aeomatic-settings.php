@@ -121,14 +121,21 @@ class AEOMATIC_Settings {
 	 * Save a sanitised settings payload and bust the request-level cache.
 	 */
 	public static function save( array $input ): bool {
-		$current     = self::all();
-		$clean       = self::sanitise( $input, $current );
-		self::$cache = null; // invalidate so the next all() re-reads from DB
-		$ok          = update_option( AEOMATIC_OPTION_KEY, $clean );
-		// Post_Types keeps its own static map populated on `init` (before
-		// admin_init runs the save). Without this flush, the settings view
-		// re-renders from the stale map and post-type checkboxes appear
-		// unchecked even though the DB has them checked.
+		$current = self::all();
+		$clean   = self::sanitise( $input, $current );
+		$ok      = update_option( AEOMATIC_OPTION_KEY, $clean );
+
+		// Defeat every downstream cache that could return stale data on the
+		// remainder of this request:
+		//   1. Settings::$cache is repopulated with the freshly-written array
+		//      (nulling it works too, but this guarantees no reader ever sees
+		//      an intermediate state).
+		//   2. WP's own options cache is invalidated in case a persistent
+		//      object cache (Redis, Memcached) held the previous value.
+		//   3. Post_Types static map is flushed so get_enabled_map() re-reads
+		//      the fresh post_types section on next call.
+		self::$cache = $clean;
+		wp_cache_delete( AEOMATIC_OPTION_KEY, 'options' );
 		if ( class_exists( 'AEOMATIC_Post_Types' ) ) {
 			AEOMATIC_Post_Types::flush_cache();
 		}
@@ -210,11 +217,31 @@ class AEOMATIC_Settings {
 		}
 
 		if ( array_key_exists( 'post_types', $input ) ) {
-			$pt_input = is_array( $input['post_types'] ) ? $input['post_types'] : array();
+			$pt_input          = is_array( $input['post_types'] ) ? $input['post_types'] : array();
 			$out['post_types'] = array();
-			// Iterate every currently public post type so unchecked boxes are saved as false.
-			foreach ( array_keys( get_post_types( array( 'public' => true ), 'names' ) ) as $slug ) {
-				if ( 'attachment' === $slug ) {
+
+			// Build the authoritative slug list from three sources so no
+			// checkbox the user actually saw can silently fall through:
+			//   1. The same filtered public-post-type list the settings view
+			//      renders (via AEOMATIC_Post_Types) — keeps view and save
+			//      aligned even if a third party filters the list.
+			//   2. Raw WP public post types — catches CPTs the wrapper class
+			//      might not know about.
+			//   3. Every slug submitted in $_POST — preserves user intent if
+			//      the CPT plugin registers its type on a hook that runs
+			//      after `admin_init` (the maybe_save handler).
+			$slugs = array();
+			if ( class_exists( 'AEOMATIC_Post_Types' ) ) {
+				$slugs = array_keys( AEOMATIC_Post_Types::get_public_post_types() );
+			}
+			$slugs = array_unique( array_merge(
+				$slugs,
+				array_keys( get_post_types( array( 'public' => true ), 'names' ) ),
+				array_map( 'sanitize_key', array_keys( $pt_input ) )
+			) );
+
+			foreach ( $slugs as $slug ) {
+				if ( '' === $slug || 'attachment' === $slug ) {
 					continue;
 				}
 				$out['post_types'][ $slug ] = ! empty( $pt_input[ $slug ] );
