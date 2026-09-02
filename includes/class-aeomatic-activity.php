@@ -2,7 +2,7 @@
 /**
  * Activity log.
  *
- * Tracks what AEOmatic — AI based Answer Engine Optimization has done since installation.
+ * Tracks what AEOmatic has done since installation.
  *
  * Performance note: bump() uses an in-memory accumulator that is flushed
  * to the database at shutdown via wp_cache_incr where available, or via a

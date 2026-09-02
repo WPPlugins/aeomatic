@@ -3,10 +3,10 @@
  * Verification module.
  *
  * Performs live checks against the user's own site to verify that
- * AEOmatic — AI based Answer Engine Optimization is actually working: schema present, llms.txt serving,
+ * AEOmatic is actually working: schema present, llms.txt serving,
  * robots.txt directives in place, FAQ blocks rendering correctly.
  *
- * Results are surfaced in the "What Did AEOmatic — AI based Answer Engine Optimization Do?" admin page
+ * Results are surfaced in the "What Did AEOmatic Do?" admin page
  * with click-through verification links.
  *
  * @package AEOmatic
@@ -192,9 +192,9 @@ class AEOMATIC_Verification {
 
 		$body = wp_remote_retrieve_body( $response );
 
-		if ( false === strpos( $body, 'AEOmatic — AI based Answer Engine Optimization' ) ) {
+		if ( false === strpos( $body, 'AEOmatic' ) ) {
 			return $this->result( 'robots', __( 'robots.txt with AI directives', 'aeomatic' ), 'warn',
-				__( 'AEOmatic — AI based Answer Engine Optimization directives not detected. Another plugin or a static robots.txt may be overriding ours.', 'aeomatic' ),
+				__( 'AEOmatic directives not detected. Another plugin or a static robots.txt may be overriding ours.', 'aeomatic' ),
 				$url, null );
 		}
 
@@ -234,7 +234,7 @@ class AEOMATIC_Verification {
 		$response = wp_remote_get( $post_url, array(
 			'timeout'     => 8,
 			'redirection' => 2,
-			'user-agent'  => 'AEOmatic — AI based Answer Engine Optimization Verifier/' . AEOMATIC_VERSION,
+			'user-agent'  => 'AEOmatic Verifier/' . AEOMATIC_VERSION,
 		) );
 
 		if ( is_wp_error( $response ) || 200 !== wp_remote_retrieve_response_code( $response ) ) {

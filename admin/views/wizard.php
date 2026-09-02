@@ -97,6 +97,16 @@ $crawler_groups = array(
 	.aeom-wiz__verify-row .status { flex:0 0 18px; color:#1d9e75; font-weight:700; }
 	.aeom-wiz__verify-row code { background:#e4f5ec; padding:1px 6px; border-radius:3px; font-size:12px; }
 	.aeom-wiz__verify-row a { margin-left:auto; font-size:12px; color:#5B3FFF; text-decoration:none; }
+	/* Readiness-step rows carry a score, not a pass/fail, so drop the green. */
+	.aeom-wiz__verify-row--neutral { border-color:#e0e0e0; background:#f6f7f7; }
+	.aeom-wiz__verify-row--neutral .status { flex:0 0 34px; color:#1f4e79; }
+	.aeom-wiz__score { margin:8px 0 18px; }
+	.aeom-wiz__score .aeob-score-big { font-size:44px; font-weight:700; line-height:1; color:#1f4e79; margin:0; }
+	.aeom-wiz__score .aeob-score-big.score-good { color:#1d9e75; }
+	.aeom-wiz__score .aeob-score-big.score-okay { color:#ba7517; }
+	.aeom-wiz__score .aeob-score-big.score-poor { color:#a32d2d; }
+	.aeom-wiz__score .aeob-score-big.score-none { color:#8c8f94; font-weight:500; }
+	.aeob-recommendations { margin:12px 0 16px; padding-left:22px; font-size:13px; }
 
 	.aeom-wiz__foot { margin-top:24px; padding-top:16px; border-top:1px solid #eee; display:flex; align-items:center; justify-content:space-between; }
 	.aeom-wiz__foot .aeom-wiz__promise { font-size:11px; color:#8c8f94; max-width:420px; }
@@ -287,10 +297,88 @@ $crawler_groups = array(
 					<?php esc_html_e( 'Recommended: leave all groups on. Blocking a crawler removes your site from that engine\'s AI answers.', 'aeomatic' ); ?>
 				</p>
 
+			<?php elseif ( 'readiness' === $step ) : ?>
+				<div class="aeom-wiz__head">
+					<h1><?php esc_html_e( 'Your first AI readiness audit', 'aeomatic' ); ?></h1>
+					<p><?php esc_html_e( 'Scored just now from your settings and your published content. Readiness measures how easy your site is for AI systems to parse and quote — not whether they actually cite you.', 'aeomatic' ); ?></p>
+				</div>
+
+				<?php
+				$aeomatic_wiz_band = static function ( $score ): string {
+					if ( null === $score ) {
+						return 'none';
+					}
+					if ( $score >= 70 ) {
+						return 'good';
+					}
+					return $score >= 40 ? 'okay' : 'poor';
+				};
+				?>
+
+				<div class="aeom-wiz__score">
+					<div class="aeob-score-big score-<?php echo esc_attr( $aeomatic_wiz_band( $readiness['overall'] ) ); ?>">
+						<?php echo (int) $readiness['overall']; ?> / 100
+					</div>
+					<p class="aeom-wiz__hint">
+						<?php
+						printf(
+							/* translators: %d: number of failing checks */
+							esc_html( _n( '%d issue found.', '%d issues found.', (int) $readiness['issue_count'], 'aeomatic' ) ),
+							(int) $readiness['issue_count']
+						);
+						?>
+					</p>
+				</div>
+
+				<div class="aeom-wiz__verify">
+					<?php foreach ( $readiness['categories'] as $aeomatic_wiz_cat ) : ?>
+						<div class="aeom-wiz__verify-row aeom-wiz__verify-row--neutral">
+							<span class="status"><?php echo null === $aeomatic_wiz_cat['score'] ? '&mdash;' : (int) $aeomatic_wiz_cat['score']; ?></span>
+							<span>
+								<?php echo esc_html( $aeomatic_wiz_cat['label'] ); ?>
+								<?php if ( 'heuristic' === $aeomatic_wiz_cat['kind'] ) : ?>
+									<em style="font-size:12px;color:#50575e;"><?php esc_html_e( '(heuristic)', 'aeomatic' ); ?></em>
+								<?php endif; ?>
+							</span>
+						</div>
+					<?php endforeach; ?>
+				</div>
+
+				<h2 style="margin-top:24px;font-size:16px;"><?php esc_html_e( 'Start with these three', 'aeomatic' ); ?></h2>
+				<?php if ( empty( $readiness['recommendations'] ) ) : ?>
+					<p class="aeom-wiz__hint"><?php esc_html_e( 'Nothing outstanding — every check is already passing. Nice start.', 'aeomatic' ); ?></p>
+				<?php else : ?>
+					<ol class="aeob-recommendations">
+						<?php foreach ( $readiness['recommendations'] as $aeomatic_wiz_rec ) : ?>
+							<li style="margin-bottom:12px;">
+								<strong><?php echo esc_html( $aeomatic_wiz_rec['title'] ); ?></strong><br />
+								<span class="aeom-wiz__hint"><?php echo esc_html( $aeomatic_wiz_rec['detail'] ); ?></span>
+								<?php if ( ! empty( $aeomatic_wiz_rec['url'] ) ) : ?>
+									<br />
+									<a href="<?php echo esc_url( $aeomatic_wiz_rec['url'] ); ?>" target="_blank" rel="noopener" class="button button-small" style="margin-top:6px;">
+										<?php esc_html_e( 'Fix this (opens in a new tab)', 'aeomatic' ); ?>
+									</a>
+								<?php endif; ?>
+							</li>
+						<?php endforeach; ?>
+					</ol>
+					<p class="aeom-wiz__hint">
+						<?php esc_html_e( 'Fix links open in a new tab so you do not lose your place here. Continue when you are ready — the full list stays on the AI Readiness dashboard.', 'aeomatic' ); ?>
+					</p>
+				<?php endif; ?>
+
 			<?php elseif ( 'verify' === $step ) :
 				$llms_url      = home_url( '/llms.txt' );
 				$llms_full_url = home_url( '/llms-full.txt' );
 				$robots_url    = home_url( '/robots.txt' );
+
+				// Reflect what is actually switched on. A row that always shows a
+				// tick is not verification, and llms.txt / AI headers are both
+				// user-toggleable by this point in the wizard.
+				$llms_on    = (bool) AEOMATIC_Settings::get( 'llms_txt', 'enabled' );
+				$headers_on = AEOMATIC_AI_Headers::is_enabled();
+				$org_on     = (bool) AEOMATIC_Settings::get( 'schema', 'organization' );
+				$mark       = static function ( bool $ok ): string { return $ok ? '&#10003;' : '&#8212;'; };
 				?>
 				<div class="aeom-wiz__head">
 					<h1><?php esc_html_e( 'You\'re live — here\'s the proof', 'aeomatic' ); ?></h1>
@@ -299,27 +387,40 @@ $crawler_groups = array(
 
 				<div class="aeom-wiz__verify">
 					<div class="aeom-wiz__verify-row">
-						<span class="status">✓</span>
-						<span><?php esc_html_e( 'Your AI index is live at', 'aeomatic' ); ?> <code>/llms.txt</code></span>
-						<a href="<?php echo esc_url( $llms_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open →', 'aeomatic' ); ?></a>
+						<span class="status"><?php echo wp_kses( $mark( $llms_on ), array() ); ?></span>
+						<span>
+							<?php echo $llms_on
+								? esc_html__( 'Your AI index is live at', 'aeomatic' )
+								: esc_html__( 'llms.txt is turned off in Settings —', 'aeomatic' ); ?>
+							<code>/llms.txt</code>
+						</span>
+						<?php if ( $llms_on ) : ?>
+							<a href="<?php echo esc_url( $llms_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open →', 'aeomatic' ); ?></a>
+						<?php endif; ?>
 					</div>
 					<div class="aeom-wiz__verify-row">
-						<span class="status">✓</span>
+						<span class="status"><?php echo wp_kses( $mark( $llms_on ), array() ); ?></span>
 						<span><?php esc_html_e( 'Full-body ingestion endpoint at', 'aeomatic' ); ?> <code>/llms-full.txt</code></span>
-						<a href="<?php echo esc_url( $llms_full_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open →', 'aeomatic' ); ?></a>
+						<?php if ( $llms_on ) : ?>
+							<a href="<?php echo esc_url( $llms_full_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open →', 'aeomatic' ); ?></a>
+						<?php endif; ?>
 					</div>
 					<div class="aeom-wiz__verify-row">
-						<span class="status">✓</span>
+						<span class="status">&#10003;</span>
 						<span><?php esc_html_e( 'AI crawler directives injected into', 'aeomatic' ); ?> <code>/robots.txt</code></span>
 						<a href="<?php echo esc_url( $robots_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Open →', 'aeomatic' ); ?></a>
 					</div>
 					<div class="aeom-wiz__verify-row">
-						<span class="status">✓</span>
-						<span><?php esc_html_e( 'AI HTTP discovery headers emitting on every public page', 'aeomatic' ); ?></span>
+						<span class="status"><?php echo wp_kses( $mark( $headers_on ), array() ); ?></span>
+						<span><?php echo $headers_on
+							? esc_html__( 'AI HTTP discovery headers emitting on public pages', 'aeomatic' )
+							: esc_html__( 'AI HTTP discovery headers are turned off in Settings', 'aeomatic' ); ?></span>
 					</div>
 					<div class="aeom-wiz__verify-row">
-						<span class="status">✓</span>
-						<span><?php esc_html_e( 'Organization schema + Speakable schema wired into the front end', 'aeomatic' ); ?></span>
+						<span class="status"><?php echo wp_kses( $mark( $org_on ), array() ); ?></span>
+						<span><?php echo $org_on
+							? esc_html__( 'Organization schema wired into the front end', 'aeomatic' )
+							: esc_html__( 'Organization schema is turned off in Settings', 'aeomatic' ); ?></span>
 					</div>
 				</div>
 
@@ -338,13 +439,13 @@ $crawler_groups = array(
 							<?php esc_html_e( '← Back', 'aeomatic' ); ?>
 						</a>
 					<?php endif; ?>
-					<?php if ( 'verify' !== $step && 'welcome' !== $step ) : ?>
+					<?php if ( AEOMATIC_Wizard::STEPS[ count( AEOMATIC_Wizard::STEPS ) - 1 ] !== $step && 'welcome' !== $step ) : ?>
 						<a href="<?php echo esc_url( $wizard->next_step_url( $step ) ); ?>" class="aeom-wiz__skip">
 							<?php esc_html_e( 'Skip this step', 'aeomatic' ); ?>
 						</a>
 					<?php endif; ?>
 					<button type="submit" name="aeomatic_wizard_submit" value="1" class="button button-primary">
-						<?php echo 'verify' === $step
+						<?php echo AEOMATIC_Wizard::STEPS[ count( AEOMATIC_Wizard::STEPS ) - 1 ] === $step
 							? esc_html__( 'Finish setup →', 'aeomatic' )
 							: ( 'welcome' === $step
 								? esc_html__( 'Let\'s go →', 'aeomatic' )

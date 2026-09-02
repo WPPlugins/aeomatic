@@ -24,9 +24,13 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 	private const MIN_WORDS = 300;
 
 	public function analyze( WP_Post $post ): AEOMATIC_Readiness_Result {
-		$text  = $this->extract_text( $post );
-		$html  = (string) $post->post_content;
-		$words = str_word_count( $text );
+		// Both html and text come from the shared extractor. Reading
+		// $post->post_content directly scored page-builder and ACF pages as
+		// empty, because their content lives in post meta.
+		$extracted = AEOMATIC_Content_Extractor::extract( $post );
+		$text      = (string) ( $extracted['text'] ?? '' );
+		$html      = (string) ( $extracted['html'] ?? '' );
+		$words     = str_word_count( $text );
 
 		$score           = 100;
 		$issues          = array();
@@ -65,16 +69,6 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 		return new AEOMATIC_Readiness_Result( 'content', $score, $issues, $recommendations );
 	}
 
-	private function extract_text( WP_Post $post ): string {
-		if ( class_exists( 'AEOMATIC_Content_Extractor' ) && method_exists( 'AEOMATIC_Content_Extractor', 'extract_text' ) ) {
-			$extracted = AEOMATIC_Content_Extractor::extract_text( $post );
-			if ( is_string( $extracted ) && $extracted !== '' ) {
-				return $extracted;
-			}
-		}
-		return trim( (string) wp_strip_all_tags( (string) $post->post_content ) );
-	}
-
 	private function has_opening_answer( string $text ): bool {
 		$opening = mb_substr( trim( $text ), 0, 500 );
 		if ( $opening === '' ) {
@@ -89,6 +83,11 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 
 	private function has_faq_structure( string $html ): bool {
 		if ( stripos( $html, 'wp:aeomatic/faq' ) !== false ) {
+			return true;
+		}
+		// Builder accordions surface as FAQ pairs via the extractor rather than
+		// as headings, so a detected pair counts as FAQ structure.
+		if ( stripos( $html, '<details' ) !== false ) {
 			return true;
 		}
 		if ( preg_match_all( '/<h[2-4][^>]*>(.*?)<\/h[2-4]>/is', $html, $m ) ) {

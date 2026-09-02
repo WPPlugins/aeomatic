@@ -66,7 +66,12 @@ class AEOMATIC_Citation_Gaps {
 		register_rest_route( self::REST_NS, '/citation-gaps/(?P<id>\d+)', array(
 			'methods'             => 'GET',
 			'callback'            => array( $this, 'route_gaps_for_post' ),
-			'permission_callback' => static function () { return current_user_can( 'edit_posts' ); },
+			'permission_callback' => static function ( WP_REST_Request $r ) {
+				// Per-post analysis — gate on this post, not on the generic
+				// edit_posts capability, so a contributor cannot read the gap
+				// report for someone else's draft.
+				return current_user_can( 'edit_post', (int) $r->get_param( 'id' ) );
+			},
 			'args'                => array(
 				'id'    => array( 'required' => true, 'type' => 'integer' ),
 				'force' => array( 'required' => false, 'type' => 'boolean', 'default' => false ),
@@ -153,7 +158,9 @@ class AEOMATIC_Citation_Gaps {
 
 			case 'generate_meta_description':
 				$excerpt = trim( (string) $post->post_excerpt );
-				$plain   = trim( wp_strip_all_tags( (string) $post->post_content ) );
+				// Extracted text, not post_content — otherwise this quick-fix reports
+				// "no content to summarise" on every page-builder page.
+				$plain   = trim( (string) ( AEOMATIC_Content_Extractor::extract( $post )['text'] ?? '' ) );
 				// Pick the first sentence-ish chunk of plain content, cap at 155 chars.
 				$candidate = '';
 				if ( '' !== $plain ) {

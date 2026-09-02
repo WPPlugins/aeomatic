@@ -4,7 +4,7 @@
  *
  * Detects Yoast SEO, Rank Math, AIOSEO, SEOPress and All in One SEO.
  * For each detected plugin, checks which schema types it already emits
- * and advises AEOmatic — AI based Answer Engine Optimization to skip those to avoid duplicates.
+ * and advises AEOmatic to skip those to avoid duplicates.
  *
  * Also fires admin notices when a conflict is detected, with a one-click
  * "Fix it for me" button that disables the overlapping schema types.
@@ -217,7 +217,7 @@ class AEOMATIC_Conflict_Detector {
 	}
 
 	/**
-	 * Whether AEOmatic — AI based Answer Engine Optimization currently has any conflicting schema types enabled.
+	 * Whether AEOmatic currently has any conflicting schema types enabled.
 	 */
 	public static function has_active_conflicts(): bool {
 		$settings  = AEOMATIC_Settings::get( 'schema' );
@@ -231,7 +231,7 @@ class AEOMATIC_Conflict_Detector {
 	}
 
 	/**
-	 * Show the conflict notice in the admin — only on AEOmatic — AI based Answer Engine Optimization pages,
+	 * Show the conflict notice in the admin — only on AEOmatic pages,
 	 * and only if not already dismissed.
 	 */
 	public function maybe_show_notice(): void {
@@ -276,20 +276,20 @@ class AEOMATIC_Conflict_Detector {
 		?>
 		<div class="notice notice-warning aeob-conflict-notice" style="border-left-color:#A23FCC;padding:14px 18px;">
 			<h3 style="margin:0 0 6px;font-size:15px;color:#1d2327;">
-				⚠️ <?php esc_html_e( 'AEOmatic — AI based Answer Engine Optimization — Schema conflict detected', 'aeomatic' ); ?>
+				⚠️ <?php esc_html_e( 'AEOmatic — Schema conflict detected', 'aeomatic' ); ?>
 			</h3>
 			<p style="margin:0 0 10px;font-size:14px;">
 				<?php
 				printf(
 					/* translators: 1: plugin name(s), 2: schema type list */
-					esc_html__( '%1$s is active and already outputs %2$s schema. If AEOmatic — AI based Answer Engine Optimization also outputs the same types, search engines see duplicate JSON-LD — this can hurt your rankings.', 'aeomatic' ),
+					esc_html__( '%1$s is active and already outputs %2$s schema. If AEOmatic also outputs the same types, search engines see duplicate JSON-LD — this can hurt your rankings.', 'aeomatic' ),
 					'<strong>' . esc_html( $names ) . '</strong>',
 					'<strong>' . esc_html( implode( ', ', $conflict_labels ) ) . '</strong>'
 				);
 				?>
 			</p>
 			<p style="margin:0;font-size:13px;color:#50575e;">
-				<?php esc_html_e( 'AEOmatic — AI based Answer Engine Optimization\'s unique features (llms.txt, AI crawler control, AEO audit, FAQ blocks, WooCommerce Product schema) don\'t conflict — only the general schema types listed above do.', 'aeomatic' ); ?>
+				<?php esc_html_e( 'AEOmatic\'s unique features (llms.txt, AI crawler control, AEO audit, FAQ blocks, WooCommerce Product schema) don\'t conflict — only the general schema types listed above do.', 'aeomatic' ); ?>
 			</p>
 			<?php if ( isset( $plugins['yoast'] ) ) : ?>
 			<p style="margin:6px 0 0;font-size:12px;color:#666;">
@@ -304,7 +304,7 @@ class AEOMATIC_Conflict_Detector {
 					<?php esc_html_e( 'Keep both (I know what I\'m doing)', 'aeomatic' ); ?>
 				</a>
 				<span style="font-size:12px;color:#888;">
-					<?php esc_html_e( '"Fix it" only disables the duplicate types. All other AEOmatic — AI based Answer Engine Optimization features stay active.', 'aeomatic' ); ?>
+					<?php esc_html_e( '"Fix it" only disables the duplicate types. All other AEOmatic features stay active.', 'aeomatic' ); ?>
 				</span>
 			</div>
 		</div>
@@ -387,120 +387,4 @@ class AEOMATIC_Conflict_Detector {
 		);
 	}
 
-	/**
-	 * Collect the raw settings the detector reads, so admins can see
-	 * exactly why a conflict is (or isn't) being reported.
-	 *
-	 * Only reads state — makes no changes. Intended for the diagnostic
-	 * panel rendered in Settings.
-	 *
-	 * @return array<string, mixed>
-	 */
-	public static function diagnostic(): array {
-		$out = array(
-			'plugins_active' => array(
-				'yoast'    => ( defined( 'WPSEO_VERSION' ) || class_exists( 'WPSEO_Frontend' ) ),
-				'rankmath' => ( defined( 'RANK_MATH_VERSION' ) || class_exists( 'RankMath' ) ),
-				'aioseo'   => ( defined( 'AIOSEO_VERSION' ) || class_exists( 'AIOSEO\\Plugin\\AIOSEO' ) ),
-				'seopress' => ( defined( 'SEOPRESS_VERSION' ) || function_exists( 'seopress_activation' ) ),
-				'tsf'      => function_exists( 'the_seo_framework' ),
-			),
-			'yoast'    => null,
-			'rankmath' => null,
-			'detected' => self::detect(),
-		);
-
-		if ( $out['plugins_active']['yoast'] ) {
-			$titles                = (array) get_option( 'wpseo_titles', array() );
-			$main                  = (array) get_option( 'wpseo', array() );
-			$social                = (array) get_option( 'wpseo_social', array() );
-			$article_type_keys     = array();
-			$page_type_keys        = array();
-			foreach ( $titles as $k => $v ) {
-				if ( 0 === strpos( (string) $k, 'schema-article-type-' ) ) {
-					$article_type_keys[ (string) $k ] = is_scalar( $v ) ? (string) $v : gettype( $v );
-				}
-				if ( 0 === strpos( (string) $k, 'schema-page-type-' ) ) {
-					$page_type_keys[ (string) $k ] = is_scalar( $v ) ? (string) $v : gettype( $v );
-				}
-			}
-
-			// Scan every Yoast option array for keys that look like schema
-			// toggles, so we can find the "Enable Schema Framework" setting
-			// no matter which option it's stored in.
-			$stringify = static function ( $val ) {
-				if ( is_bool( $val ) ) {
-					return $val ? 'true' : 'false';
-				}
-				if ( is_scalar( $val ) ) {
-					return (string) $val;
-				}
-				return gettype( $val );
-			};
-
-			$schema_like_keys = array();
-			foreach ( array( 'wpseo' => $main, 'wpseo_titles' => $titles, 'wpseo_social' => $social ) as $opt_name => $opt_arr ) {
-				foreach ( $opt_arr as $k => $v ) {
-					$k_lower = strtolower( (string) $k );
-					if ( false !== strpos( $k_lower, 'schema' ) || false !== strpos( $k_lower, 'framework' ) || false !== strpos( $k_lower, 'structured' ) ) {
-						$schema_like_keys[ $opt_name . '.' . (string) $k ] = $stringify( $v );
-					}
-				}
-			}
-
-			$out['yoast'] = array(
-				'wpseo_titles_option_exists' => ! empty( $titles ),
-				'enable_schema_master'       => array_key_exists( 'enable_schema', $main )
-					? $stringify( $main['enable_schema'] )
-					: '(missing → treated as on)',
-				'breadcrumbs_enable'         => isset( $titles['breadcrumbs-enable'] ) ? $stringify( $titles['breadcrumbs-enable'] ) : '(missing)',
-				'company_or_person'          => isset( $titles['company_or_person'] ) ? (string) $titles['company_or_person'] : '(missing)',
-				'schema_article_type_keys'   => $article_type_keys,
-				'schema_page_type_keys'      => $page_type_keys,
-				'faq_block_class_loaded'     => class_exists( 'WPSEO_Schema_FAQ_Section' ),
-				'schema_like_keys_scan'      => $schema_like_keys,
-				'wpseo_option_all_keys'      => array_keys( $main ),
-			);
-		}
-
-		if ( $out['plugins_active']['rankmath'] ) {
-			$modules      = (array) get_option( 'rank_math_modules', array() );
-			$out['rankmath'] = array(
-				'rank_math_modules_option'   => $modules,
-				'schema_module_active'       => in_array( 'rich-snippet', $modules, true ),
-			);
-		}
-
-		return $out;
-	}
-
-	/**
-	 * Render the diagnostic as an HTML block for the Settings page.
-	 * Admin-only; safe to call anywhere.
-	 */
-	public static function get_diagnostic_html(): string {
-		if ( ! current_user_can( 'manage_options' ) ) {
-			return '';
-		}
-		$diag = self::diagnostic();
-
-		$pretty = wp_json_encode( $diag, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
-		if ( false === $pretty ) {
-			$pretty = 'wp_json_encode failed';
-		}
-
-		ob_start();
-		?>
-		<details style="margin:8px 0 16px;padding:8px 12px;background:#fbfbfb;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;">
-			<summary style="cursor:pointer;color:#50575e;">
-				<?php esc_html_e( 'Conflict detector diagnostic (why is this warning firing?)', 'aeomatic' ); ?>
-			</summary>
-			<p style="margin:8px 0 4px;color:#666;">
-				<?php esc_html_e( 'Below is exactly what the conflict detector read from your active SEO plugins. If you believe schema is off in Yoast but the detector says otherwise, check that every schema-article-type-* and schema-page-type-* value below reads "None", that breadcrumbs_enable is empty/false, and that company_or_person is empty. Copy the block below when reporting an issue.', 'aeomatic' ); ?>
-			</p>
-			<pre style="margin:0;padding:10px;background:#0f172a;color:#e2e8f0;border-radius:4px;overflow-x:auto;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;"><?php echo esc_html( $pretty ); ?></pre>
-		</details>
-		<?php
-		return (string) ob_get_clean();
-	}
 }

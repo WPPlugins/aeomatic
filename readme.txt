@@ -1,191 +1,258 @@
-=== AEOmatic — Answer Engine Optimization, GEO, AIO, LLM SEO ===
+=== AEOmatic — AI SEO, llms.txt & Schema Markup ===
 Contributors: mmtushar
-Tags: aeo, answer engine optimization, llms.txt, ai seo, schema
+Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
 Tested up to: 7.0.2
 Requires PHP: 8.0
-Stable tag: 1.1.8
+Stable tag: 1.1.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Get cited by ChatGPT, Claude, Perplexity, and Google AI Overviews. 22 schema types, llms.txt, /llms-full.txt, AI crawler control — free.
+Make WordPress readable to AI search: 22 schema types with a visual JSON-LD editor, llms.txt, and AI crawler control. Reads Elementor, Divi and ACF.
 
 == Description ==
 
-AEOmatic is the complete WordPress plugin for Answer Engine Optimization (AEO) — also called Generative Engine Optimization (GEO), AI Optimization (AIO), LLM SEO, AI SEO, or ChatGPT SEO. Same job, different acronyms. Get your site cited by ChatGPT, Claude, Perplexity, and Google AI Overviews.
+AI search engines cannot cite what they cannot parse. AEOmatic makes your WordPress content machine-readable — then shows you what the crawlers actually got.
 
-= Why your site is invisible to AI search =
+It does three jobs:
 
-Classic SEO plugins (Yoast, Rank Math) were built for Google's 2015 search box. They have no idea what an AI answer engine looks for. Your site likely has no AI bot allow-list, no schema for AI to parse, no answer-shaped content signals, no `llms.txt`, no `/llms-full.txt`, and no AI HTTP headers. ChatGPT and Perplexity skip you and cite your competitors.
+1. **Publishes the signals AI systems read.** JSON-LD structured data across 22 schema types, an `llms.txt` index at your site root, a `/llms-full.txt` full-text endpoint, and per-bot crawl directives in `robots.txt`.
+2. **Scores how extractable your content is.** A site-wide AI readiness score across three categories, plus per-post audits that name the specific thing to fix rather than handing you a number.
+3. **Reports what actually happened.** A server-side log of every recognised AI crawler request — which bot, which URL, and the HTTP status your site returned. If you are quietly serving 404s to GPTBot, this is where you find out.
 
-AEOmatic fixes that. It runs alongside Yoast, Rank Math, AIOSEO, SEOPress, or The SEO Framework. Auto-imports their settings. Adds the AI visibility layer none of them cover. Never overwrites your titles, meta descriptions, canonicals, or sitemaps.
+= It reads your page builder, not just Gutenberg =
 
-= What you get — all free, no account, no data sent to external servers =
+Most AI SEO plugins parse `post_content` and stop. If your pages are built in Elementor or Divi, or your copy lives in ACF fields, that means your schema and your scores are computed against an almost-empty string.
 
-* **Visual schema editor** for 22 types — Article, BlogPosting, NewsArticle, TechArticle, Recipe, HowTo, FAQPage, QAPage, Review, Product, Service, LocalBusiness, Event, JobPosting, Course, Book, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage, Movie. Auto-detects the right type from your content. Edit any field in the Gutenberg sidebar with a live JSON-LD preview.
+AEOmatic runs one normalising extraction pass that understands **Gutenberg, the Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen and WPBakery**, plus ACF text, textarea, wysiwyg, repeater and flexible-content fields. Everything downstream — schema generation, the audit, readiness scoring, `llms.txt` — reads that single extraction, so a page assembled in a builder is scored on what it actually renders.
 
-* **Type-specific property extraction** — not just generic Article schema on everything. Recipe posts get ingredients and instructions extracted. JobPosting posts get salary ranges auto-detected. Event posts get start/end dates and venue. LocalBusiness gets address and opening hours.
+This work goes by several names — Answer Engine Optimization (AEO), Generative Engine Optimization (GEO), LLM SEO, AI search optimization. Same underlying job.
 
-* **Page-builder support** — reads content from Gutenberg, Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen, WPBakery. ACF text, textarea, wysiwyg, and repeater fields are scanned automatically.
+= Built to sit beside your SEO plugin, not replace it =
 
-* **WooCommerce Product schema** — price, availability, SKU, brand, ratings, sale dates all auto-filled. Variable products get AggregateOffer with min/max price range.
+AEOmatic writes only its own settings and its own post meta. It never touches your titles, meta descriptions, canonicals or XML sitemaps, and it never modifies another plugin's configuration.
 
-* **`/llms.txt` generator** — serves a spec-compliant `/llms.txt` at your site root. Curated `## Key pages` section plus a full list of every published page and post.
+It detects Yoast SEO, Rank Math, All in One SEO, SEOPress and The SEO Framework, can import your organisation details from whichever you run, and flags the case where two plugins would emit the same JSON-LD type on one page — with a one-click fix that adjusts **AEOmatic's** output, never theirs.
 
-* **`/llms-full.txt` endpoint** — a single URL that returns the full markdown body of every published page and post. AI crawlers can ingest your whole site in one HTTP GET instead of following dozens of links from your `llms.txt` index.
+= What AEOmatic measures, and what it refuses to guess at =
 
-* **AI crawler control** — per-bot Allow/Disallow toggles in your `robots.txt` for 18 AI crawlers by default (20 recognised in the visit log): GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-User, Claude-SearchBot, PerplexityBot, Perplexity-User, Google-Extended, CCBot, Bytespider, Amazonbot, Applebot-Extended, meta-externalagent, Meta-ExternalFetcher, DeepSeekBot, Cohere-AI, DuckAssistBot. Tracks Anthropic's three current user agents (ClaudeBot, Claude-User, Claude-SearchBot) per [Anthropic's published crawler documentation](https://support.claude.com/en/articles/8896518).
+AEOmatic scores **readiness** — everything about your site that a machine can check locally: can AI crawlers reach your pages, do those pages carry structured data something can parse, is your content shaped so an answer can be lifted out of it. Measurable from your own install, so AEOmatic measures it.
 
-* **AI HTTP discovery headers** — five emerging AI-citation headers emitted automatically on every public page: `X-AI-Crawl`, `X-AI-Citeable`, `X-Content-License`, `X-AI-Content-Type`, `X-AI-Speakable`. Plus a `Link` header pointing to your `llms.txt`.
+It does not score **visibility** — whether ChatGPT, Gemini, Claude or Perplexity actually surface or cite you, for which prompts, trending over time. Answering that means querying those engines on a schedule from outside your site. That is a hosted service, not a plugin feature, and a local imitation of it would just be a number with nothing behind it.
 
-* **AI crawler visit log** — records every recognised AI bot visit (bot name, URL, timestamp) in a capped log. See exactly how often GPTBot, ClaudeBot, or PerplexityBot crawl your site.
+So the dashboard is labelled **AI Readiness**, not AI Visibility. A well-prepared site still is not guaranteed to be cited — no plugin can promise that, and every check in the audit tells you whether it is a direct check or a heuristic so you can see which is which.
 
-* **AEO content audit** — every post scored 0–100 on the 10 signals that predict AI citation: direct opening answer, question-style headings, FAQ block, schema, author authority, internal links, structured content, image alt text, page weight, word count.
+One distinction the crawler log makes easy to get wrong: **a crawl is not a citation.** The log proves a bot fetched a URL. Whether that page ended up in an answer is not visible in crawler traffic, and no AI vendor exposes it there.
 
-* **AI Readiness** — a second scoring lens across five explicit categories (Content, Trust, Authority, Entities, Technical). Each category returns its own 0–100 score plus a per-category list of issues and recommendations, so you know exactly which axis is dragging the overall score down. Available as an **AEOmatic → AI Readiness** admin page with a post picker, and as an "AI Readiness" panel in the block-editor sidebar that auto-refreshes on save. Extensible via the `aeomatic_ai_readiness_analyzers` filter. Fully offline.
+= Everything included, no account and no API key =
 
-* **Entity Scanner** — scans content, schema, headings, and metadata for six entity types: **Organization**, **Person**, **Service**, **Product**, **LocalBusiness**, **FAQ**. Returns an overall coverage score, list of missing entities, and per-entity confidence with detected signals, missing signals, and actionable recommendations. Available as an **AEOmatic → Entity Scanner** admin page and an "Entity Scanner" panel in the block-editor sidebar. Built on a reusable signal-collector service so all six detectors share one extraction pass. Extensible via the `aeomatic_entity_detectors` filter. Fully offline.
+* **AI readiness audit, three levels.** Site-wide across three categories (Technical readiness, Content readiness, AI crawler access), per post across five categories (Content, Trust, Authority, Entities, Technical), and a per-post 0–100 content rubric of thirteen weighted checks. Every category states whether it is a direct check or a heuristic.
 
-* **Setup Wizard** — a five-step onboarding that runs on activation. Auto-imports organisation name, logo, and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO, or The SEO Framework, with live JSON-LD preview and per-plugin opt-in. Never overwrites values you already set in AEOmatic. Fully offline.
+* **Visual schema editor for 22 types** — Article, BlogPosting, NewsArticle, TechArticle, Recipe, HowTo, FAQPage, QAPage, Review, Product, Service, LocalBusiness, Event, JobPosting, Course, Book, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage, Movie. The type is auto-detected from your content and every field is editable in the block-editor sidebar with a live JSON-LD preview.
 
-* **WordPress dashboard widget** — "AEO Readiness" tile on the native wp-admin dashboard: average AEO score, posts with citation gaps, top three AI-bot visitors with a mini bar chart, and log-retention health.
+* **Type-specific property extraction** — Recipe posts get ingredients and instructions, JobPosting posts get salary ranges, Event posts get dates and venue, LocalBusiness gets address and opening hours. Not generic Article schema on everything.
 
-* **Bulk audit action** — one bulk action on Posts/Pages/CPT list screens re-runs the audit and citation-gap analysers across selected rows. Admin notice shows average scores, total gaps flagged, and a per-post score table.
+* **`/llms.txt` generator** — a spec-compliant Markdown index at your site root: site summary, curated key pages from your nav menu, then every published item grouped by post type.
 
-* **Ask AI — "Am I cited?"** — four one-click buttons in the editor sidebar (ChatGPT, Perplexity, Google AI, Claude). Opens each engine in a new tab with your post title pre-filled as the question, so you can check for yourself whether your site is quoted in the AI answer. No API keys, no accounts, no external calls from your server — just links your browser opens.
+* **`/llms-full.txt` endpoint** — the extracted body text of your published content at one URL, so an AI crawler can ingest the site in a single request. Bounded and cached so it cannot become a load problem.
 
-* **AI Citation Gaps** — sixteen local, rules-based checks that flag exactly why a page won't get cited by AI engines: orphan pages, missing opening answer, no FAQ block, schema type mismatch, low internal-link count, sibling-topic gaps by category, and more. Runs per-post in the block editor sidebar and site-wide from **AEOmatic → Citation Gaps**. Each gap ships with a one-line fix hint plus a one-click quick-fix where possible. Fully offline; no external calls.
+* **AI crawler control** — per-bot Allow/Disallow toggles in `robots.txt` for 18 AI crawlers: GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-User, Claude-SearchBot, PerplexityBot, Perplexity-User, Google-Extended, CCBot, Bytespider, Amazonbot, Applebot-Extended, meta-externalagent, Meta-ExternalFetcher, DeepSeekBot, Cohere-AI, DuckAssistBot. Twenty user agents recognised in the visit log.
 
-* **FAQ Gutenberg block** — native Q&A block with accessible `<details>/<summary>` HTML and automatic FAQPage JSON-LD. No configuration needed.
+* **AI crawler log and breakdown** — which AI bots requested which URLs, what HTTP status you served them, and when. A 404 or 403 being served to OAI-SearchBot is the kind of thing you want to know. Records bot name, URL, user agent and status only: **no IP addresses, no cookies, no visitor data**, nothing leaves your server.
 
-* **VideoObject schema** — auto-detected from YouTube and Vimeo embeds in your content.
+* **Page-builder support** — content is read from Gutenberg, Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen and WPBakery, plus ACF text, textarea, wysiwyg, repeater and flexible-content fields. Scoring reflects what your pages actually render.
 
-* **Speakable schema** — signals to voice AI engines which part of the page to read aloud when citing your content.
+* **WooCommerce Product schema** — price, availability, SKU, brand, ratings and sale dates auto-filled; variable products get AggregateOffer with a min/max range.
 
-* **WebSite schema with SearchAction** — enables Google's sitelinks search box on your homepage.
+* **AI Citation Gaps** — sixteen local rules-based checks that name why a page is unlikely to be quoted: orphan pages, no opening answer, thin body, no FAQ block, no question heading, schema type mismatch, missing author signal, missing from llms.txt, low outbound links, low alt coverage, no citation hook, no related links, sibling-topic gaps by category, FAQ or HowTo content without matching schema, missing meta description. Two ship a one-click fix.
 
-* **SEO plugin conflict detection** — detects Yoast SEO, Rank Math, AIOSEO, SEOPress, and The SEO Framework. Shows a warning if duplicate schema would be emitted. One-click "Fix it for me" disables only the overlapping types in AEOmatic; your existing SEO plugin is untouched.
+* **Entity Scanner** — scans content, schema, headings and metadata for Organization, Person, Service, Product, LocalBusiness and FAQ entities, returning a coverage score with per-entity confidence, detected signals, missing signals and recommendations.
 
-* **Live verification panel** — makes HTTP requests to your own site and shows proof of every change: llms.txt live with size and line count, robots.txt with AI bot count, schema blocks on your latest post with a direct Google Rich Results Test link.
+* **FAQ block** — a native Q&A block producing accessible `<details>`/`<summary>` markup plus FAQPage JSON-LD. `[aeo_faq]` / `[aeo_qa]` shortcodes for the Classic Editor.
 
-= AI engines supported =
+* **Setup wizard with a real first audit** — six skippable steps: welcome, import from your existing SEO plugin, organisation details, AI crawler access, **your first readiness audit**, verify. The audit step shows your score and the three highest-value fixes with direct links, so you finish onboarding knowing what to do next.
 
-* **ChatGPT** and **ChatGPT Search** (OpenAI) — GPTBot, OAI-SearchBot, ChatGPT-User
-* **Claude** and **Claude Search** (Anthropic) — ClaudeBot, Claude-User, Claude-SearchBot
-* **Perplexity AI** — PerplexityBot, Perplexity-User
-* **Google AI Overviews** and **Gemini** — Google-Extended (Gemini training control) plus Googlebot (used for AI Overviews retrieval)
-* **Microsoft Copilot** and **Bing AI** — indexed via Bingbot (Copilot has no dedicated AI user agent; it retrieves from Bing's index)
-* **Meta AI** (LLaMA) — meta-externalagent
+* **SEO plugin conflict detection** — detects Yoast SEO, Rank Math, All in One SEO, SEOPress and The SEO Framework, and checks whether each is *currently emitting* overlapping schema. One click disables only the overlapping types **in AEOmatic**; your other plugin's configuration is never modified.
+
+* **AI HTTP discovery headers** — optional `X-AI-Crawl`, `X-AI-Citeable`, `X-Content-License`, `X-AI-Content-Type`, `X-AI-Speakable` headers plus a `Link: rel="ai-context"` pointer to your llms.txt. These are proposed conventions, not a ratified standard, and no AI vendor has committed to reading them — so they ship as a setting you can switch off.
+
+* **Live verification panel** — makes HTTP requests to your own site and shows what is actually being served: llms.txt with size and line count, robots.txt with AI bot count, schema blocks on your latest post with a direct Google Rich Results Test link.
+
+* **VideoObject, Speakable, WebSite + SearchAction schema**, an author-profile panel, a wp-admin dashboard widget, and a bulk re-audit action on post list screens.
+
+= AI crawlers recognised =
+
+* **ChatGPT / ChatGPT Search** (OpenAI) — GPTBot, OAI-SearchBot, ChatGPT-User
+* **Claude / Claude Search** (Anthropic) — ClaudeBot, Claude-User, Claude-SearchBot
+* **Perplexity** — PerplexityBot, Perplexity-User
+* **Google AI Overviews / Gemini** — Google-Extended controls Gemini training; AI Overviews retrieval uses Googlebot
+* **Microsoft Copilot** — no dedicated AI user agent; retrieves from the Bing index via Bingbot
+* **Meta AI** — meta-externalagent, Meta-ExternalFetcher
 * **DeepSeek** — DeepSeekBot
 * **Apple Intelligence** — Applebot-Extended
 * **Cohere** — Cohere-AI
+* **DuckDuckGo AI answers** — DuckAssistBot
 * **Common Crawl** — CCBot
 
-= No external dependencies on the front-end =
+Controlling a crawler's access controls whether it can read you. It does not control whether an engine cites you.
 
-Schema and metadata generate server-side and cache in post meta. No external API calls when a visitor loads a page. The audit engine and verification tool only run inside the WordPress admin. No data sent to external servers.
+= Runs entirely on your own server =
 
-= How AEOmatic compares to other AEO plugins =
+Schema and metadata generate server-side and cache in post meta. There are no external API calls on the front end, no account, no API key, no credit limits, and no content sent to a vendor cloud. The verification panel only ever requests URLs on your own site, and only for logged-in administrators. No third-party analytics, no telemetry.
 
-* **Free forever, no account.** The full toolkit works without signing up. No monthly credit limits on the core feature set.
-* **Runs entirely on your own server.** Schema, `llms.txt`, `/llms-full.txt`, AI HTTP headers, and audit all generate server-side and cache in post meta. Zero external API calls on the front-end. No content sent to vendor clouds.
-* **`/llms-full.txt` alongside the rest of the toolkit.** A single URL that returns the full markdown body of every published page and post — packaged with schema, crawler control, audit, and HTTP headers in one plugin.
-* **22 schema types.** Many AEO plugins ship 6–10. Recipe, JobPosting, Event, LocalBusiness, Movie, Book — all auto-detected.
-* **8 page builders.** Most plugins read Gutenberg only. AEOmatic extracts content from Gutenberg, Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen, and WPBakery.
-
-= Who AEOmatic is for =
+= Who it is for =
 
 * **Publishers and media** who want to be quoted by AI as a source
-* **SaaS companies** who want ChatGPT to recommend their software
-* **Local businesses** who want to appear in AI location answers
-* **E-commerce stores** (WooCommerce + EDD compatible) who want AI shopping visibility
-* **Agencies** managing AEO across many client sites
-* **Solo creators and consultants** who want to finally be visible in AI search
+* **Businesses and SaaS companies** who want their entity data to be unambiguous to AI systems
+* **Local businesses** who want correct LocalBusiness signals
+* **E-commerce stores** on WooCommerce
+* **SEO professionals and content teams** who need an AI layer on top of their existing stack
+* **Agencies** running a repeatable audit across client sites
+* **WordPress developers** — 11 filters, a documented REST namespace, and analyzer interfaces to extend
+
+= What is not in this plugin =
+
+Stated plainly so you can decide before installing. None of the following exists here:
+
+* Citation tracking — whether an AI engine quoted you
+* Prompt tracking — which questions surface your site
+* Historical AI visibility trends
+* Competitor monitoring or citation comparison
+* AI referral analytics (traffic arriving *from* AI answers)
+* Multi-site management, client dashboards, or white-label reports
+
+These all need infrastructure outside WordPress — something querying AI engines on a schedule and storing results over time. They are on the roadmap as hosted functionality, not faked locally.
 
 == Installation ==
 
-1. Upload the `aeomatic` folder to `/wp-content/plugins/`, or install through **Plugins → Add New → Upload Plugin**, or install directly from **Plugins → Add New** searching for "AEOmatic".
-2. Activate the plugin through the **Plugins** menu.
-3. Go to **Settings → Permalinks** and click **Save Changes**. This is required once after activation so the `/llms.txt` and `/llms-full.txt` endpoints work.
-4. Go to **AEOmatic → Settings** and configure your Organization name, logo, and crawler preferences.
-5. Open any post in the editor. Click the **AEOmatic** icon in the top-right toolbar to open the sidebar. You will see the detected schema type, auto-populated fields, and a live JSON-LD preview.
+1. Install from **Plugins → Add New** and search for "AEOmatic", or upload the `aeomatic` folder to `/wp-content/plugins/`, or use **Plugins → Add New → Upload Plugin**.
+2. Activate through the **Plugins** menu. Activation registers the `/llms.txt` and `/llms-full.txt` endpoints and flushes rewrite rules for you.
+3. The setup wizard opens automatically. Six skippable steps, ending with your first readiness audit and top three fixes.
+4. Visit **AEOmatic → Dashboard** for your site AI readiness score, category breakdown, top recommendations and AI crawler activity.
+5. Open any post in the block editor and click the AEOmatic icon in the top-right toolbar for the schema editor, audit breakdown, citation gaps, AI readiness and entity coverage.
 
-**After updating the plugin**, repeat step 3 (Settings → Permalinks → Save Changes) to refresh rewrite rules.
+**Requirements:** WordPress 6.4+, PHP 8.0+, and pretty permalinks (any structure other than "Plain").
+
+You do **not** normally need to re-save permalinks after installing or updating — the plugin flushes rewrite rules on activation and again automatically when it detects a version change. If `/llms.txt` returns a 404, confirm **Settings → Permalinks** is not set to "Plain", then click **Save Changes** there once.
 
 == Frequently Asked Questions ==
 
-= What is Answer Engine Optimization (AEO)? =
+= Will this get me cited by ChatGPT or ranked in AI search? =
 
-AEO means structuring your content so AI answer engines (ChatGPT, Perplexity, Claude, Google AI Overviews, Gemini) can find it, understand it, and cite it. Also called GEO (Generative Engine Optimization), AIO (AI Optimization), LLM SEO, AI SEO, or ChatGPT SEO. Same shift, different acronyms — from optimising for search result links to optimising for AI-generated answers.
+No plugin can promise that, and AEOmatic does not. What it does is fix the technical and content signals you control: crawler access, parseable structured data, an llms.txt index, and content shaped so an answer can be extracted. Whether an AI engine then cites you depends on that engine's own ranking and retrieval, which nobody outside those companies controls. Any plugin promising guaranteed AI citations is guessing.
 
-= How does AEOmatic compare to other AEO plugins? =
+= What is the difference between AI readiness and AI visibility? =
 
-AEOmatic ships a broad free toolkit — 22 schema types, 8 page-builder integrations, 16 AI crawler controls, 5 AI HTTP headers, content audit, and `/llms-full.txt` — all generated on your own server with no external API calls on the front-end. Some paid alternatives offer Citation Trackers that poll ChatGPT, Perplexity, Claude, and Gemini to verify whether they cited you; AEOmatic does not have that feature today. Pick the plugin that matches the outcome you need most.
+AI readiness is how well-prepared your site is — measurable from your own database and settings, which is what AEOmatic scores. AI visibility is whether AI systems actually surface or cite you — measurable only by querying those engines from outside your site, which AEOmatic does not do. The dashboard is labelled "AI Readiness" for that reason.
+
+= Does the crawler log tell me if a page was cited? =
+
+No. It tells you a crawler requested a URL and what status you served. Whether that page was retained, used, or quoted in an AI answer is not visible in crawler traffic, and no AI vendor exposes it there. Treat crawler visits as access evidence, not citation evidence.
 
 = Does this conflict with Yoast SEO or Rank Math? =
 
-It can, if both plugins output the same schema types. AEOmatic detects active SEO plugins and shows a warning notice. The "Fix it for me" button disables only the overlapping schema types in AEOmatic — your Yoast or Rank Math settings are not changed. AEOmatic's AEO-specific features (llms.txt, /llms-full.txt, AI crawler control, AEO audit, AI HTTP headers, visual schema editor) sit alongside classic SEO plugins without conflict.
+It is designed to run beside them. AEOmatic writes only its own settings and its own post meta and never modifies another plugin's configuration. Because several SEO plugins also emit Article, Organization and Breadcrumb schema, AEOmatic detects that overlap and offers a one-click fix that disables only the overlapping types *in AEOmatic*. The detector checks whether the other plugin's schema module is actually switched on, so it does not nag you about a conflict that is not happening. Until you resolve a real overlap, both plugins emit their types and the site readiness score reports it as a failing technical check.
 
-= My llms.txt or /llms-full.txt shows a 404. How do I fix it? =
+= Can I import my existing SEO plugin's settings? =
 
-Go to **Settings → Permalinks** and click **Save Changes**. This flushes WordPress rewrite rules and registers the virtual endpoints. If the 404 persists, check that your hosting is not serving a physical `robots.txt`, `llms.txt`, or `llms-full.txt` file from your server root — a physical file will override WordPress's virtual endpoint.
+Yes — organisation name, logo and social profiles from Yoast SEO, Rank Math, SEOPress, All in One SEO or The SEO Framework. Import is per-plugin, opt-in, one-directional, and never overwrites a value you have already set in AEOmatic.
 
 = What is /llms-full.txt? =
 
-A virtual URL AEOmatic serves at `/llms-full.txt` that returns the full markdown body of every published page and post in a single HTTP response. AI crawlers can ingest your whole site in one fetch instead of following 50 links. AEOmatic shipped `/llms-full.txt` in version 1.1.0 (June 2026) as part of the free tier, packaged alongside schema, crawler control, audit, and AI HTTP headers.
+A single URL returning the extracted body text of your published content, so an AI crawler can ingest the site in one request instead of following dozens of links. It is capped at 200 items per post type by default and says so in its own output when it truncates; raise or remove the cap with the `aeomatic_llms_full_max_items` filter.
+
+= My llms.txt or /llms-full.txt shows a 404. How do I fix it? =
+
+Check that **Settings → Permalinks** is not set to "Plain" — the endpoints need a rewrite rule, which plain permalinks do not support. Then click **Save Changes** on that screen once. Also confirm llms.txt is enabled under **AEOmatic → Settings**.
 
 = Does the plugin work with Elementor, Divi, or other page builders? =
 
-Yes. AEOmatic has a content extractor for every major page builder: Gutenberg, Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen, and WPBakery. It reads each builder's native data format to extract text content. ACF text, textarea, wysiwyg, and repeater fields are also scanned automatically.
+Content extraction does. AEOmatic reads content from Gutenberg, Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen and WPBakery, plus ACF fields, so schema and scoring reflect what your pages actually render. It does not add builder-native widgets.
 
 = Will this slow down my site? =
 
-No. Schema is generated once per post and cached in post meta with a content fingerprint. The cache is invalidated automatically when you save the post, change meta, switch categories, or edit a field override. There are no external API calls on the front-end. The audit engine and verification tool only run in the WordPress admin.
+Schema is generated server-side and cached in post meta. `/llms.txt` and `/llms-full.txt` are cached for an hour and flushed when content changes. The crawler log writes only when a recognised AI bot requests a page, and defers its single database write to the end of that request. There are no external requests and no third-party assets on public pages. Admin CSS and JS load only on AEOmatic screens.
 
 = What schema types does it support? =
 
-22 types: Article, BlogPosting, NewsArticle, TechArticle, Recipe, HowTo, FAQPage, QAPage, Review, Product, Service, LocalBusiness, Event, JobPosting, Course, Book, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage, and Movie. The type is auto-detected from your content. You can override it per-post from the editor sidebar.
+Twenty-two page-level types (Article, BlogPosting, NewsArticle, TechArticle, Recipe, HowTo, FAQPage, QAPage, Review, Product, Service, LocalBusiness, Event, JobPosting, Course, Book, Movie, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage) plus Organization, Author/Person, Breadcrumb, WebSite with SearchAction, VideoObject and Speakable.
 
 = Does it work with WooCommerce? =
 
-Yes. WooCommerce products automatically receive Product schema with price, availability, SKU, brand (from product attributes), aggregate rating, and review count. Variable products get AggregateOffer schema with min/max price range. All fields are editable in the visual editor.
+Yes. Product schema with price, availability, SKU, brand and ratings; variable products get AggregateOffer with a min/max price range.
 
 = How do I know the schema is actually working? =
 
-Go to **AEOmatic → What did we do?**. The verification panel makes live HTTP requests to your site and shows status for llms.txt, /llms-full.txt, robots.txt AI directives, JSON-LD blocks on your latest post, content coverage, and AEO scores. Click "Validate with Google" to open Google's Rich Results Test pre-loaded with your post URL.
+Open **AEOmatic → What did we do?** for the live verification panel. It fetches your own URLs and shows what is being served, with a direct link to Google's Rich Results Test for your latest post.
 
 = Does the plugin send my data anywhere? =
 
-No. AEOmatic makes zero external API calls on the front-end. Schema is generated server-side and cached. The verification panel only makes HTTP requests to your own site to confirm the public output. No content, no analytics, no telemetry is sent off-site.
+No. No external API calls on the front end, no telemetry, no analytics, no account. The only server-side HTTP requests are the verification panel fetching your own site, for administrators only.
 
-= Is this white-hat SEO? =
+= Is the audit score reliable? =
 
-Yes. AEOmatic produces standards-compliant schema, `llms.txt`, `robots.txt` directives, and HTTP headers. Nothing cloaked, no doorway pages, no manipulation. Just the structured signals AI engines and Google's guidelines explicitly recommend.
-
-= Will it help me rank in Google AI Overviews and ChatGPT? =
-
-Yes, that's the whole point. AEOmatic generates the structured signals (schema, llms.txt, /llms-full.txt, AI HTTP headers, answer-shaped content scoring) that AI engines use to identify and cite trustworthy sources. We can't guarantee placement (no plugin can), but we give you every signal those engines look for.
-
-= What is the new AI Citation Gaps feature? =
-
-A local, rules-based analyser that runs 16 checks on every post and page and flags the specific reasons a page is unlikely to be cited by AI engines — orphan pages, missing opening answers, FAQ content without FAQPage schema, low-confidence schema types, missing meta descriptions, missing from llms.txt, and more. Each gap comes with a one-line fix hint and — for structurally fixable gaps — a one-click quick-fix button. Available in the block editor sidebar per-post and as a site-wide **AEOmatic → Citation Gaps** table sorted worst-first. No external API calls; no keys, no account. Deeper LLM-powered gap analysis is planned for the Pro tier separately.
+It is a rubric, and it is honest about which parts are heuristic. The Technical and AI crawler access categories are direct checks — a setting is either on or off. Content readiness is explicitly labelled a heuristic: it uses pattern matching to estimate how answer-shaped your content is. Category scores are combined with an unweighted mean, because no public evidence supports specific relative weights and inventing some would be false precision.
 
 = What happens when I uninstall AEOmatic? =
 
-Deactivating the plugin stops the AI crawler visit log, unregisters the `/llms.txt` and `/llms-full.txt` endpoints, and removes the injected schema, HTTP headers, and robots.txt AI directives. Your posts, pages, WooCommerce products, and any content you authored remain untouched. **Uninstalling** (deleting via **Plugins → Delete**) additionally removes AEOmatic's own options and per-post schema cache. It does not remove your Yoast, Rank Math, AIOSEO, or SEOPress settings — those were never modified.
+Deleting the plugin removes every option, transient, scheduled task and post-meta key it created. Deactivating alone leaves your settings intact so reactivating does not lose your configuration.
 
 == Screenshots ==
 
-1. Site-wide AEO dashboard with score distribution and worst-performing posts.
-2. Visual schema editor in the Gutenberg sidebar — auto-populated fields, live JSON-LD preview, type confidence.
+1. AI Readiness dashboard — overall score, three category cards labelled direct-check or heuristic, issue count and top recommendations.
+2. Visual schema editor in the block-editor sidebar — auto-populated fields, live JSON-LD preview, type confidence.
 3. Type-aware JSON-LD generation — Recipe schema with auto-extracted ingredients and instructions.
-4. Live verification panel showing proof of every change with click-to-verify links and a direct Google Rich Results Test link.
+4. AI crawler activity — which bots requested which URLs and what HTTP status was served.
+5. Setup wizard readiness step — your first audit score with the three highest-value fixes.
+6. Live verification panel showing what is actually being served, with a direct Google Rich Results Test link.
 
 == Privacy Policy ==
 
-AEOmatic does not collect, store, or transmit any personal data to external servers. Schema, `llms.txt`, `/llms-full.txt`, and AI HTTP headers are generated server-side on your own site. The verification panel makes HTTP requests only to your own site to confirm the public output. The AI crawler visit log records bot user-agent strings, requested URLs, and timestamps in your own database — this is bot metadata, not visitor data, and never leaves your site. AEOmatic makes no external API calls on the front-end and ships with no third-party analytics or telemetry.
+AEOmatic does not collect, store, or transmit any personal data to external servers.
+
+Schema, `llms.txt`, `/llms-full.txt` and the AI discovery headers are generated server-side on your own site. The verification panel makes HTTP requests only to your own site, only for logged-in administrators, to confirm public output.
+
+The AI crawler visit log records, in your own database only: the matched bot name, the requested URL, the user-agent string (truncated to 255 characters), the HTTP status your site returned, and a timestamp. It records **no IP addresses, no cookies, no referrers and no human-visitor data**, and only logs requests whose user agent matches a known AI crawler. Retention is configurable from 7 to 365 days (default 90) with a 500-entry ceiling and a daily purge. Nothing in the log ever leaves your site.
+
+AEOmatic makes no external API calls on the front end and ships with no third-party analytics or telemetry.
+
+== Upgrade Notice ==
+
+= 1.1.9 =
+Fixes page-builder and ACF pages being scored as empty across six readiness checks — expect scores to rise on Elementor, Divi, Bricks, Oxygen, Beaver Builder and WPBakery sites. Renamed, with a new AI Readiness dashboard, an AI crawler log that records the HTTP status served to each bot, and a first-audit onboarding step. Fixes two readiness checks that were silently degraded, tightens the per-post citation-gaps permission check, caches and bounds /llms.txt and /llms-full.txt, and makes uninstall remove everything it should. Recommended update.
+
+= 1.1.8 =
+Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.1.9 =
+
+Renamed to **AEOmatic — AI SEO, llms.txt & Schema Markup**, plus a new site-level AI readiness score, a first-audit onboarding step, richer crawler analytics, and a set of correctness, security and performance fixes.
+
+* **New: site-wide AI Readiness score with three categories.** A new `AEOMATIC_Site_Readiness` module aggregates what the plugin already measures into Technical readiness (direct checks on llms.txt, schema, organisation identity, permalinks, AI headers and duplicate-schema conflicts), Content readiness (mean of the per-post Content and Entities readiness categories across your 20 most recently modified published items) and AI crawler access (share of AI crawlers your robots.txt settings allow, with answer-time retrieval crawlers weighted separately from training crawlers). Every category declares whether it is a direct check or a heuristic, and the overall score is an unweighted mean with no-data categories excluded rather than counted as zero. Exposed at `GET /wp-json/aeomatic/v1/readiness/site` (`manage_options`).
+* **New: rebuilt dashboard as an AI Readiness dashboard.** Overall score, three category cards each labelled "Direct check" or "Heuristic", issue count, top three recommendations with deep links, an "Improve my site" action, and an AI crawler activity table. Copy states explicitly that readiness is not visibility and that a crawler visit is not a citation.
+* **New: the setup wizard now runs a real audit.** A sixth step between "AI crawlers" and "Verify" runs a fresh site readiness audit and shows the score, the category breakdown and the three highest-value fixes with links that open in a new tab. Onboarding now ends with the user knowing what to do next instead of only having filled in settings.
+* **New: AI crawler log records user agent and response status.** Entries now carry the truncated user-agent string and the HTTP status the site returned, so a 404 or 403 being served to GPTBot is visible. The write is deferred to `shutdown` because the status code is not final earlier in the request. A new `AEOMATIC_Crawler_Log::get_breakdown()` returns per-bot visits, error counts, last-seen time and last URL. Still no IP addresses, cookies or visitor data.
+* **New: AI discovery headers are now a setting.** `AEOMATIC_Analyzer_Technical` already read an `ai_headers.enabled` setting that was never declared, so the check silently always passed. The setting now exists, defaults to on for existing installs, and has a toggle in Settings. `X-AI-Crawl` now reports `restricted` instead of `allowed` when every AI crawler is blocked, rather than contradicting the site's own robots.txt.
+* **Fix: page-builder and ACF pages are no longer scored as empty.** This is the big one. Six readiness checks read `$post->post_content` directly instead of going through the shared content extractor, so on an Elementor, Divi, Bricks, Oxygen, Beaver Builder or WPBakery site — where the body lives in post meta — they saw a near-empty string and deducted points for content that was plainly there: Content lost 30 (no headings, no FAQ structure), Entities 25 (no named entities), Technical 20 ("body under 20 words"), Trust 25 (no outbound links) and Authority 20 (no authoritative outbound). All six now read the extractor, which merges post_content, page-builder data and ACF fields.
+
+  The Technical analyzer's message was the worst of it: it told page-builder users *"content may be JS-only or hidden behind a page builder that AI crawlers cannot parse"* — fired **because** they used a page builder, on content that server-renders perfectly well. Rewritten to describe what it now actually measures.
+
+  **Expect readiness scores to rise on page-builder sites after updating.** That is the correction landing, not new optimisation.
+* **Fix: Elementor headings and links are now visible to the analysers.** The Elementor extractor flattened everything to bare text, so a Heading widget lost its level entirely — `settings.title` became a plain line and `settings.header_size` (which holds `h2`) was being collected *as content*, injecting the literal string "h2" into the extracted text. Heading widgets are now rebuilt as real `<hN>` markup, and widget links in `settings.link.url` are rebuilt as `<a href>` anchors so internal and outbound link counts can see them. Heading titles and button labels are emitted exactly once, not twice.
+* **Fix: the "generate meta description" quick-fix works on page-builder pages.** It summarised `post_content`, so on a builder page it returned "Post has no content to summarise". It now summarises extracted text.
+* **Fix: `AEOMATIC_Content_Extractor::extract_text()` now exists.** The Content readiness analyzer called it behind a `method_exists()` guard and silently fell back to `wp_strip_all_tags( $post->post_content )` — so page-builder and ACF content was scored as thin or empty. Same class of bug fixed for the Entity Scanner in 1.1.7; this was the remaining caller.
+* **Fix: `AEOMATIC_LLMs_Txt::is_post_included()` now exists.** The Technical readiness analyzer called it behind a guard and fell back to a post-type check, so a post excluded from llms.txt by a disabled feature or a password was still scored as included.
+* **Fix: uninstall now removes everything.** `uninstall.php` deleted 7 of the 16 post-meta keys the plugin writes and leaked the `aeomatic_crawler_log_stats` and `aeomatic_wizard_completed` options. It now clears all 9 options, 6 transients, the scheduled purge hook and all 16 meta keys — readiness, citation-gap and entity-scan results included.
+* **Fix: robots.txt no longer advertises llms.txt as a `Sitemap:`.** The `Sitemap:` directive expects an XML sitemap or a plain list of URLs; llms.txt is Markdown, so conforming crawlers reported a malformed sitemap. It is now emitted as a comment. Discovery still works through the well-known path and the `Link: rel="ai-context"` header.
+* **Performance: `/llms.txt` and `/llms-full.txt` are now cached and bounded.** Both were rebuilt from scratch on every anonymous request with `nocache_headers()` and `posts_per_page => -1`, so each GET walked every published post — and `/llms-full.txt` ran full page-builder extraction on all of them. Both bodies are now cached in a transient for one hour, flushed on publish, delete and menu changes, and served with `Cache-Control: public, max-age=3600`. `/llms-full.txt` is capped at 200 items per post type via the new `aeomatic_llms_full_max_items` filter and states in its own body when it truncated.
+* **Performance: running an audit no longer discards built schema.** `AEOMATIC_Schema::on_meta_changed()` invalidated the schema cache on any post-meta write, including the plugin's own readiness, citation-gap and entity-scan result keys — so every analysis run forced a schema rebuild on the next front-end request. Those keys are now in the skip list.
+* **Security: the per-post citation gaps endpoint is now gated per post.** `GET /citation-gaps/{id}` checked the generic `edit_posts` capability, which let any contributor read the gap report for another author's draft. It now checks `edit_post` for the requested ID, matching every other per-post route.
+* **Fix: the wizard's verify step no longer shows unconditional checkmarks.** Rows for llms.txt, AI discovery headers and Organization schema ticked green even when those features were switched off. They now reflect the actual setting.
+* **Renamed to "AEOmatic — AI SEO, llms.txt & Schema Markup".** The plugin name now carries the terms people actually search the plugin directory for, and the description leads with the mechanism (making content machine-readable, then reporting what crawlers got) rather than a promise about citations. Tag slots were re-spent on terms the name does not already cover.
+* **Docs: added README.md and rewrote readme.txt.** New developer README covering the readiness-vs-visibility distinction, the full feature status table, the roadmap, security and performance notes, REST endpoints, all 11 filters, extension points, build tooling, and honest "compatibility testing required" markers. readme.txt drops unsupported claims ("get cited by…", "ChatGPT skips you and cites your competitors"), corrects the audit check count from 10 to 13, corrects installation instructions that told users to re-save permalinks when the plugin already flushes rewrites automatically, and adds a section listing what the plugin does *not* do.
+* **New: build tooling in `bin/`.** `build-plugin.js` packages a release behind five gates — version consistency across all four release locations, a dev-file allow-list, the required `aeomatic/` wrapper folder, forward-slash ZIP entry names, and passing static checks. `check-structure.js` and `check-references.js` stand in for `php -l` and catch dangling `AEOMATIC_*::` calls; both self-test. Fixes two packaging defects: 1.1.8 shipped `.claude/` and `.vercel/` files into a public download, and an unwrapped archive would have installed as a second plugin folder instead of updating.
 
 = 1.1.8 =
 * **Fix: SEO-plugin conflict warning no longer fires when Yoast or Rank Math has its schema module turned off.** Previously the detector treated "plugin installed & active" as "plugin is emitting schema", so users who had disabled Rank Math's Schema (Structured Data) module or set every CPT's Yoast schema page/article type to "None" still saw the yellow "Schema conflict detected" banner. The detector now inspects each plugin's own settings: Rank Math conflicts only report when `rich-snippet` is present in the `rank_math_modules` option; Yoast conflicts short-circuit to empty when its Schema Framework master switch (`wpseo.enable_schema`) is off, otherwise they are gated per-key on `wpseo_titles` — `breadcrumb` needs `breadcrumbs-enable`, `article`/`author` need at least one real `schema-article-type-*` value, and `organization` needs `company_or_person` set alongside at least one real `schema-page-type-*` value. Also adds a new `aeomatic_seo_conflicts_detected` filter so sites with unusual overrides can drop or adjust entries programmatically.

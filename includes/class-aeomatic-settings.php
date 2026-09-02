@@ -71,6 +71,12 @@ class AEOMATIC_Settings {
 			'robots'           => array(
 				'block_pdfs' => false,
 			),
+			'ai_headers'       => array(
+				// Emit the X-AI-* discovery headers and the Link: rel="ai-context"
+				// header on public requests. Read by AEOMATIC_AI_Headers and scored
+				// by AEOMATIC_Analyzer_Technical.
+				'enabled' => true,
+			),
 			'log'              => array(
 				// Days to retain AI crawler visit rows. Purged daily via WP-Cron.
 				'retention_days' => 90,
@@ -201,6 +207,10 @@ class AEOMATIC_Settings {
 			$out['robots']['block_pdfs'] = ! empty( $input['robots']['block_pdfs'] );
 		}
 
+		if ( isset( $input['ai_headers'] ) && is_array( $input['ai_headers'] ) ) {
+			$out['ai_headers']['enabled'] = ! empty( $input['ai_headers']['enabled'] );
+		}
+
 		if ( isset( $input['log'] ) && is_array( $input['log'] ) ) {
 			$days = isset( $input['log']['retention_days'] ) ? absint( $input['log']['retention_days'] ) : 90;
 			// Clamp to a sane window: at least a week, at most a year.
@@ -216,35 +226,19 @@ class AEOMATIC_Settings {
 			}
 		}
 
-		if ( array_key_exists( 'post_types', $input ) ) {
-			$pt_input          = is_array( $input['post_types'] ) ? $input['post_types'] : array();
-			$out['post_types'] = array();
-
-			// Build the authoritative slug list from three sources so no
-			// checkbox the user actually saw can silently fall through:
-			//   1. The same filtered public-post-type list the settings view
-			//      renders (via AEOMATIC_Post_Types) — keeps view and save
-			//      aligned even if a third party filters the list.
-			//   2. Raw WP public post types — catches CPTs the wrapper class
-			//      might not know about.
-			//   3. Every slug submitted in $_POST — preserves user intent if
-			//      the CPT plugin registers its type on a hook that runs
-			//      after `admin_init` (the maybe_save handler).
-			$slugs = array();
-			if ( class_exists( 'AEOMATIC_Post_Types' ) ) {
-				$slugs = array_keys( AEOMATIC_Post_Types::get_public_post_types() );
-			}
-			$slugs = array_unique( array_merge(
-				$slugs,
-				array_keys( get_post_types( array( 'public' => true ), 'names' ) ),
-				array_map( 'sanitize_key', array_keys( $pt_input ) )
-			) );
-
-			foreach ( $slugs as $slug ) {
+		if ( array_key_exists( 'post_types', $input ) && is_array( $input['post_types'] ) ) {
+			// The settings view pairs every checkbox with a hidden "0" companion,
+			// so $_POST always enumerates every rendered slug with the user's
+			// explicit intent. We trust POST here and merge over the current
+			// saved map — that way slugs not on the page (e.g. CPTs registered
+			// on a later hook than admin_init on some earlier request) keep
+			// their prior state instead of being dropped.
+			foreach ( $input['post_types'] as $raw_slug => $val ) {
+				$slug = sanitize_key( (string) $raw_slug );
 				if ( '' === $slug || 'attachment' === $slug ) {
 					continue;
 				}
-				$out['post_types'][ $slug ] = ! empty( $pt_input[ $slug ] );
+				$out['post_types'][ $slug ] = ! empty( $val );
 			}
 		}
 

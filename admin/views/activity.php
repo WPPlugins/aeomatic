@@ -2,7 +2,7 @@
 /**
  * Activity & verification view.
  *
- * Shows the user concrete proof of what AEOmatic — AI based Answer Engine Optimization has done since installation:
+ * Shows the user concrete proof of what AEOmatic has done since installation:
  * live verification of llms.txt and schema, counters of work done,
  * and a chronological activity log.
  *
@@ -19,9 +19,9 @@ $aeomatic_installed_at  = (int) AEOMATIC_Settings::get( '_meta', 'installed_at' 
 $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time() - $aeomatic_installed_at ) / DAY_IN_SECONDS ) ) : 1;
 ?>
 <div class="wrap aeob-wrap">
-	<h1><?php esc_html_e( 'What did AEOmatic — AI based Answer Engine Optimization do?', 'aeomatic' ); ?></h1>
+	<h1><?php esc_html_e( 'What did AEOmatic do?', 'aeomatic' ); ?></h1>
 	<p class="aeob-tagline">
-		<?php esc_html_e( 'Live proof of every change AEOmatic — AI based Answer Engine Optimization has made to your site. Every link below opens the actual file or page so you can verify it yourself.', 'aeomatic' ); ?>
+		<?php esc_html_e( 'Live proof of every change AEOmatic has made to your site. Every link below opens the actual file or page so you can verify it yourself.', 'aeomatic' ); ?>
 	</p>
 
 	<div class="aeob-grid aeob-grid--4">
@@ -66,7 +66,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 			</button>
 		</div>
 		<p class="description">
-			<?php esc_html_e( 'AEOmatic — AI based Answer Engine Optimization just made live HTTP requests to your own site to verify everything is working. Click any "View" link to see the actual output yourself.', 'aeomatic' ); ?>
+			<?php esc_html_e( 'AEOmatic just made live HTTP requests to your own site to verify everything is working. Click any "View" link to see the actual output yourself.', 'aeomatic' ); ?>
 		</p>
 		<div id="aeob-verify-results" class="aeob-verify-list">
 			<div class="aeob-verify-loading"><?php esc_html_e( 'Running checks…', 'aeomatic' ); ?></div>
@@ -74,7 +74,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 	</div>
 
 	<div class="aeob-card">
-		<h2><?php esc_html_e( 'How to confirm AEOmatic — AI based Answer Engine Optimization is working — manual checks', 'aeomatic' ); ?></h2>
+		<h2><?php esc_html_e( 'How to confirm AEOmatic is working — manual checks', 'aeomatic' ); ?></h2>
 		<p class="description">
 			<?php esc_html_e( 'For complete peace of mind, run these manual checks. They take about 2 minutes total.', 'aeomatic' ); ?>
 		</p>
@@ -101,7 +101,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 				<a href="<?php echo esc_url( home_url( '/robots.txt' ) ); ?>" target="_blank" rel="noopener">
 					<?php echo esc_html( home_url( '/robots.txt' ) ); ?>
 				</a>
-				<p><?php esc_html_e( 'Look for the "AI crawler directives — managed by AEOmatic — AI based Answer Engine Optimization" section listing each AI bot.', 'aeomatic' ); ?></p>
+				<p><?php esc_html_e( 'Look for the "AI crawler directives — managed by AEOmatic" section listing each AI bot.', 'aeomatic' ); ?></p>
 			</li>
 			<li>
 				<strong><?php esc_html_e( 'View page source on any post', 'aeomatic' ); ?></strong>
@@ -119,7 +119,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 			</li>
 			<li>
 				<strong><?php esc_html_e( 'Open a post in the editor', 'aeomatic' ); ?></strong>
-				<p><?php esc_html_e( 'Click the chart-line icon in the top-right of the editor. The AEOmatic — AI based Answer Engine Optimization sidebar opens with a 0–100 score and breakdown.', 'aeomatic' ); ?></p>
+				<p><?php esc_html_e( 'Click the chart-line icon in the top-right of the editor. The AEOmatic sidebar opens with a 0–100 score and breakdown.', 'aeomatic' ); ?></p>
 			</li>
 		</ol>
 	</div>
@@ -224,7 +224,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 	<div class="aeob-card aeob-card--tips">
 		<h2><?php esc_html_e( 'How long until I see results?', 'aeomatic' ); ?></h2>
 		<p>
-			<?php esc_html_e( 'AEOmatic — AI based Answer Engine Optimization makes structural changes to your site that AI engines can read immediately. However, AI search engines crawl on their own schedule:', 'aeomatic' ); ?>
+			<?php esc_html_e( 'AEOmatic makes structural changes to your site that AI engines can read immediately. However, AI search engines crawl on their own schedule:', 'aeomatic' ); ?>
 		</p>
 		<ul class="aeob-timeline">
 			<li><strong><?php esc_html_e( 'Day 1:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'Schema, llms.txt and robots.txt directives are live immediately. Verify above.', 'aeomatic' ); ?></li>

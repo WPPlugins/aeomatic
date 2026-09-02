@@ -6,6 +6,10 @@
  * identify this site as citeable and locate the llms.txt context file.
  * These are emerging citation signals that complement robots.txt directives.
  *
+ * Nothing here is a standard: no AI vendor has committed to reading these
+ * headers. They are cheap, additive hints, and the whole block can be turned
+ * off in Settings.
+ *
  * @package AEOmatic
  */
 
@@ -19,12 +23,30 @@ class AEOMATIC_AI_Headers {
 		add_action( 'send_headers', array( $this, 'send' ) );
 	}
 
+	/**
+	 * Are the discovery headers enabled?
+	 *
+	 * Defaults to true so installs that predate the ai_headers setting keep
+	 * their existing behaviour after an update.
+	 */
+	public static function is_enabled(): bool {
+		$enabled = AEOMATIC_Settings::get( 'ai_headers', 'enabled' );
+		if ( null === $enabled || '' === $enabled ) {
+			return true;
+		}
+		return (bool) $enabled;
+	}
+
 	public function send(): void {
-		if ( is_admin() ) {
+		if ( is_admin() || ! self::is_enabled() ) {
 			return;
 		}
 
-		header( 'X-AI-Crawl: allowed' );
+		// Reflect the user's actual robots.txt configuration rather than
+		// hard-coding "allowed". Announcing X-AI-Crawl: allowed while
+		// robots.txt disallows every AI bot is a contradictory signal, and the
+		// robots.txt directives are the ones crawlers actually obey.
+		header( 'X-AI-Crawl: ' . ( self::any_crawler_allowed() ? 'allowed' : 'restricted' ) );
 		header( 'X-AI-Citeable: true' );
 		header( 'X-Content-License: free-to-cite-with-attribution' );
 		header( 'X-AI-Content-Type: human-authored' );
@@ -37,5 +59,21 @@ class AEOMATIC_AI_Headers {
 			// false = allow multiple Link headers without overwriting.
 			header( 'Link: <' . esc_url_raw( home_url( '/llms.txt' ) ) . '>; rel="ai-context"; type="text/plain"', false );
 		}
+	}
+
+	/**
+	 * Is at least one AI crawler allowed in the crawler settings?
+	 */
+	private static function any_crawler_allowed(): bool {
+		$crawlers = (array) AEOMATIC_Settings::get( 'crawlers' );
+		if ( empty( $crawlers ) ) {
+			return true;
+		}
+		foreach ( $crawlers as $allowed ) {
+			if ( $allowed ) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

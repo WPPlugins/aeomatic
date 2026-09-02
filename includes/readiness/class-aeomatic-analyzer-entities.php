@@ -93,7 +93,9 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 	}
 
 	private function has_named_entities( WP_Post $post ): bool {
-		$text = trim( (string) wp_strip_all_tags( (string) $post->post_content ) );
+		// Via the extractor: builder and ACF content is where the entity names
+		// actually live on many sites.
+		$text = trim( (string) ( AEOMATIC_Content_Extractor::extract( $post )['text'] ?? '' ) );
 		if ( $text === '' ) {
 			return false;
 		}

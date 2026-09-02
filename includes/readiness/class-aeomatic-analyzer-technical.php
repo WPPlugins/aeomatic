@@ -43,11 +43,16 @@ class AEOMATIC_Analyzer_Technical implements AEOMATIC_Readiness_Analyzer_Interfa
 			$recommendations[] = __( 'Open AEOmatic → Settings → llms.txt and enable this post type for inclusion.', 'aeomatic' );
 		}
 
-		$text = trim( (string) wp_strip_all_tags( (string) $post->post_content ) );
+		// Read through the extractor, which merges post_content, page-builder
+		// data and ACF fields. Reading post_content alone fired this check on
+		// every Elementor or Divi page — telling the user their content was
+		// unparseable precisely because they used a page builder.
+		$extracted = AEOMATIC_Content_Extractor::extract( $post );
+		$text      = trim( (string) ( $extracted['text'] ?? '' ) );
 		if ( str_word_count( $text ) < 20 ) {
 			$score -= 20;
-			$issues[]          = __( 'Server-rendered body is under 20 words — content may be JS-only or hidden behind a page builder that AI crawlers cannot parse.', 'aeomatic' );
-			$recommendations[] = __( 'Ensure the page body renders text in the initial HTML response, not just via JavaScript.', 'aeomatic' );
+			$issues[]          = __( 'Under 20 words of extractable text found in the post body, page-builder data, or ACF fields — AI crawlers may find little to read here.', 'aeomatic' );
+			$recommendations[] = __( 'Add body copy, or check that the content renders in the initial HTML response rather than being injected by JavaScript.', 'aeomatic' );
 		}
 
 		if ( ! $this->ai_headers_enabled() ) {
@@ -90,13 +95,9 @@ class AEOMATIC_Analyzer_Technical implements AEOMATIC_Readiness_Analyzer_Interfa
 	}
 
 	private function ai_headers_enabled(): bool {
-		if ( ! class_exists( 'AEOMATIC_Settings' ) ) {
-			return false;
+		if ( ! class_exists( 'AEOMATIC_AI_Headers' ) ) {
+			return true; // Nothing to check against; don't penalise.
 		}
-		$enabled = AEOMATIC_Settings::get( 'ai_headers', 'enabled' );
-		if ( $enabled === null || $enabled === '' ) {
-			return true; // Default-on in the plugin.
-		}
-		return (bool) $enabled;
+		return AEOMATIC_AI_Headers::is_enabled();
 	}
 }

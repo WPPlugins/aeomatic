@@ -37,7 +37,7 @@ class AEOMATIC_Crawler_Control {
 
 		if ( $block_pdfs ) {
 			$lines[] = '';
-			$lines[] = '# Block PDF files — managed by AEOmatic — AI based Answer Engine Optimization';
+			$lines[] = '# Block PDF files — managed by AEOmatic';
 			$lines[] = 'User-agent: *';
 			$lines[] = 'Disallow: /*.pdf$';
 			$lines[] = '';
@@ -45,7 +45,7 @@ class AEOMATIC_Crawler_Control {
 
 		if ( ! empty( $crawlers ) ) {
 			$lines[] = '';
-			$lines[] = '# AI crawler directives — managed by AEOmatic — AI based Answer Engine Optimization';
+			$lines[] = '# AI crawler directives — managed by AEOmatic';
 
 			foreach ( $crawlers as $bot => $allowed ) {
 				$lines[] = 'User-agent: ' . $bot;
@@ -55,10 +55,17 @@ class AEOMATIC_Crawler_Control {
 		}
 
 		// Hint to llms.txt for compatible AI crawlers.
+		//
+		// Deliberately a comment, not a `Sitemap:` directive: Sitemap expects an
+		// XML sitemap or a plain list of URLs, and llms.txt is Markdown. Pointing
+		// Sitemap at it makes conforming crawlers report a malformed sitemap and
+		// can suppress the site's real sitemap. The canonical discovery routes for
+		// llms.txt are the well-known path itself and the Link: rel="ai-context"
+		// response header AEOMATIC_AI_Headers emits.
 		$llms_enabled = AEOMATIC_Settings::get( 'llms_txt', 'enabled' );
 		if ( $llms_enabled ) {
-			$lines[] = '# AEO discovery';
-			$lines[] = 'Sitemap: ' . home_url( '/llms.txt' );
+			$lines[] = '# AI context file (llms.txt spec: https://llmstxt.org/)';
+			$lines[] = '# ' . home_url( '/llms.txt' );
 			$lines[] = '';
 		}
 

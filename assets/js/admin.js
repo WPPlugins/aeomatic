@@ -1,5 +1,5 @@
 /**
- * AEOmatic — AI based Answer Engine Optimization admin dashboard.
+ * AEOmatic admin dashboard.
  *
  * Loads site-wide audit data and renders the score, distribution
  * and worst-performing posts table.

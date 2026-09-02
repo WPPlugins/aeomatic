@@ -29,7 +29,7 @@ class AEOMATIC_Post_Types {
 		unset( $types['attachment'] );
 
 		/**
-		 * Filter the list of post types AEOmatic — AI based Answer Engine Optimization considers.
+		 * Filter the list of post types AEOmatic considers.
 		 *
 		 * @param array<string,WP_Post_Type> $types
 		 */

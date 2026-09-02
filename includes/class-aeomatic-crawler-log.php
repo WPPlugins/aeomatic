@@ -8,6 +8,21 @@
  * ceiling against bot storms. Exposes a small stats surface so the admin
  * dashboard widget can show retention health without recomputing.
  *
+ * Privacy model — what is recorded per visit:
+ *   bot     matched crawler name from self::BOTS
+ *   url     request path on this site
+ *   ua      raw user-agent string, truncated to UA_MAX_LENGTH
+ *   status  HTTP response status this site returned
+ *   time    Unix timestamp
+ *
+ * Deliberately NOT recorded: IP addresses, cookies, referrers, headers, or
+ * anything tied to a human visitor. Only requests whose user agent matches a
+ * known AI crawler are logged at all, and nothing is sent off-site.
+ *
+ * A crawler visit means a bot fetched a URL. It does NOT mean the page was
+ * read, retained, or cited in an AI answer — no AI vendor exposes citation
+ * data through crawler traffic, so this log cannot report citations.
+ *
  * @package AEOmatic
  */
 
@@ -22,6 +37,9 @@ class AEOMATIC_Crawler_Log {
 	const CRON_HOOK              = 'aeomatic_crawler_log_purge';
 	const MAX                    = 500;
 	const DEFAULT_RETENTION_DAYS = 90;
+
+	/** User-agent strings are truncated to this many characters before storage. */
+	const UA_MAX_LENGTH = 255;
 
 	/**
 	 * All recognised AI bot strings (case-insensitive substring match).
@@ -53,8 +71,18 @@ class AEOMATIC_Crawler_Log {
 		'DuckAssistBot',
 	);
 
+	/**
+	 * Entry staged by maybe_log() on `wp`, written on `shutdown`.
+	 *
+	 * @var array|null
+	 */
+	private static $pending = null;
+
 	public function register(): void {
 		add_action( 'wp', array( $this, 'maybe_log' ) );
+		// The response status is not settled at `wp`, so the row is written at
+		// shutdown once http_response_code() reflects what was actually sent.
+		add_action( 'shutdown', array( __CLASS__, 'flush_pending' ) );
 		add_action( self::CRON_HOOK, array( __CLASS__, 'run_purge' ) );
 
 		// Self-heal: if activation ran before this build (or the schedule was
@@ -77,12 +105,33 @@ class AEOMATIC_Crawler_Log {
 		}
 
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$uri   = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/';
-		$entry = array(
+		$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/';
+
+		// Staged, not written: the status code is only final at shutdown.
+		self::$pending = array(
 			'bot'  => $bot,
 			'url'  => $uri,
+			'ua'   => self::truncate_ua( $ua ),
 			'time' => time(),
 		);
+	}
+
+	/**
+	 * Write the staged entry, stamping the response status the site returned.
+	 *
+	 * Runs on `shutdown`. A 404 or 403 for GPTBot is far more actionable than a
+	 * bare visit count, which is why the write is deferred this late.
+	 */
+	public static function flush_pending(): void {
+		if ( null === self::$pending ) {
+			return;
+		}
+
+		$entry         = self::$pending;
+		self::$pending = null;
+
+		$status          = function_exists( 'http_response_code' ) ? http_response_code() : 0;
+		$entry['status'] = ( is_int( $status ) && $status > 0 ) ? $status : 200;
 
 		$log   = (array) get_option( self::OPTION_KEY, array() );
 		$log[] = $entry;
@@ -93,6 +142,16 @@ class AEOMATIC_Crawler_Log {
 
 		// autoload = false — log data does not need to load on every request.
 		update_option( self::OPTION_KEY, $log, false );
+	}
+
+	/**
+	 * Trim a user-agent string to a storable length.
+	 */
+	private static function truncate_ua( string $ua ): string {
+		if ( strlen( $ua ) <= self::UA_MAX_LENGTH ) {
+			return $ua;
+		}
+		return substr( $ua, 0, self::UA_MAX_LENGTH );
 	}
 
 	private function identify_bot( string $ua ): string {
@@ -124,6 +183,54 @@ class AEOMATIC_Crawler_Log {
 		}
 		arsort( $counts );
 		return $counts;
+	}
+
+	/**
+	 * Per-bot breakdown including how many responses were errors.
+	 *
+	 * Sorted by visit count descending. Entries logged before status codes were
+	 * recorded have no 'status' key and count as neither ok nor error.
+	 *
+	 * @return array<int,array{bot:string,visits:int,ok:int,errors:int,last_seen:int,last_url:string}>
+	 */
+	public static function get_breakdown(): array {
+		$log  = (array) get_option( self::OPTION_KEY, array() );
+		$rows = array();
+
+		foreach ( $log as $entry ) {
+			$bot = (string) ( $entry['bot'] ?? 'unknown' );
+			if ( ! isset( $rows[ $bot ] ) ) {
+				$rows[ $bot ] = array(
+					'bot'       => $bot,
+					'visits'    => 0,
+					'ok'        => 0,
+					'errors'    => 0,
+					'last_seen' => 0,
+					'last_url'  => '',
+				);
+			}
+
+			++$rows[ $bot ]['visits'];
+
+			if ( isset( $entry['status'] ) ) {
+				$status = (int) $entry['status'];
+				if ( $status >= 400 ) {
+					++$rows[ $bot ]['errors'];
+				} else {
+					++$rows[ $bot ]['ok'];
+				}
+			}
+
+			$time = (int) ( $entry['time'] ?? 0 );
+			if ( $time >= $rows[ $bot ]['last_seen'] ) {
+				$rows[ $bot ]['last_seen'] = $time;
+				$rows[ $bot ]['last_url']  = (string) ( $entry['url'] ?? '' );
+			}
+		}
+
+		usort( $rows, static function ( $a, $b ) { return $b['visits'] <=> $a['visits']; } );
+
+		return array_values( $rows );
 	}
 
 	/**

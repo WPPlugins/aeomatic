@@ -46,8 +46,19 @@ class AEOMATIC_Schema {
 		$skip_keys = array(
 			AEOMATIC_Schema_Builder::CACHE_META,
 			AEOMATIC_Content_Extractor::ACF_CACHE_META,
+			// Our own analysis output. None of these feed schema generation, so
+			// writing them must not drop the built schema.
 			'_aeomatic_score',
 			'_aeomatic_score_breakdown',
+			'_aeomatic_ai_readiness',
+			'_aeomatic_ai_readiness_fingerprint',
+			'_aeomatic_ai_readiness_score',
+			'_aeomatic_citation_gaps',
+			'_aeomatic_citation_gaps_fingerprint',
+			'_aeomatic_citation_gaps_score',
+			'_aeomatic_entity_scan',
+			'_aeomatic_entity_scan_fingerprint',
+			'_aeomatic_entity_coverage',
 			'_edit_lock',
 			'_edit_last',
 			'_encloseme',

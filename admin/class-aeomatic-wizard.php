@@ -2,11 +2,16 @@
 /**
  * First-run setup wizard.
  *
- * Five-step guided onboarding: welcome → import from an existing SEO plugin
- * → organisation details → AI crawler defaults → verify. Diverges from
- * competitor wizards on layout (vertical step rail, live-preview column)
- * and messaging (offline-first, no accounts required). Runs once after
- * activation and can be re-launched from the dashboard.
+ * Six-step guided onboarding: welcome → import from an existing SEO plugin
+ * → organisation details → AI crawler defaults → first readiness audit →
+ * verify. Diverges from competitor wizards on layout (vertical step rail,
+ * live-preview column) and messaging (offline-first, no accounts required).
+ * Runs once after activation and can be re-launched from the dashboard.
+ *
+ * The readiness step is the payoff step: it runs a real audit, shows the
+ * resulting score, and names the three highest-value fixes with deep links.
+ * Nothing is configured there — it exists so a new user leaves onboarding
+ * knowing what to do next rather than having only filled in settings.
  *
  * @package AEOmatic
  */
@@ -22,7 +27,7 @@ class AEOMATIC_Wizard {
 	const REDIRECT_FLAG = 'aeomatic_wizard_redirect';
 	const COMPLETED_KEY = 'aeomatic_wizard_completed';
 
-	const STEPS = array( 'welcome', 'import', 'org', 'crawlers', 'verify' );
+	const STEPS = array( 'welcome', 'import', 'org', 'crawlers', 'readiness', 'verify' );
 
 	public function register(): void {
 		add_action( 'admin_menu',  array( $this, 'register_page' ), 20 );
@@ -107,8 +112,9 @@ class AEOMATIC_Wizard {
 			case 'welcome':  return __( 'Welcome', 'aeomatic' );
 			case 'import':   return __( 'Import existing settings', 'aeomatic' );
 			case 'org':      return __( 'Your organisation', 'aeomatic' );
-			case 'crawlers': return __( 'AI crawlers', 'aeomatic' );
-			case 'verify':   return __( 'Verify & finish', 'aeomatic' );
+			case 'crawlers':  return __( 'AI crawlers', 'aeomatic' );
+			case 'readiness': return __( 'Your first audit', 'aeomatic' );
+			case 'verify':    return __( 'Verify & finish', 'aeomatic' );
 		}
 		return $step;
 	}
@@ -223,6 +229,13 @@ class AEOMATIC_Wizard {
 		$sources = AEOMATIC_SEO_Importer::inspect();
 		$schema  = AEOMATIC_Settings::get( 'schema' );
 		$crawlers = AEOMATIC_Settings::get( 'crawlers' );
+
+		// Force a fresh audit on the readiness step: the user has just changed
+		// organisation and crawler settings, so a cached summary from before
+		// those saves would show them stale numbers on their very first look.
+		$readiness = 'readiness' === $step
+			? AEOMATIC_Site_Readiness::summary( true )
+			: null;
 
 		require AEOMATIC_DIR . 'admin/views/wizard.php';
 	}

@@ -1,5 +1,5 @@
 /**
- * AEOmatic — AI based Answer Engine Optimization — Gutenberg editor sidebar.
+ * AEOmatic — Gutenberg editor sidebar.
  *
  * Four collapsible panels:
  *  1. Schema Generator  — type detector + visual field editor + live JSON preview
@@ -718,8 +718,8 @@
 		[] );
 
 		return el( Fragment, null,
-			el( PluginSidebarMoreMenuItem, { target: 'aeob-sidebar' }, 'AEOmatic — AI based Answer Engine Optimization' ),
-			el( PluginSidebar, { name: 'aeob-sidebar', title: 'AEOmatic — AI based Answer Engine Optimization', icon: 'chart-line' },
+			el( PluginSidebarMoreMenuItem, { target: 'aeob-sidebar' }, 'AEOmatic' ),
+			el( PluginSidebar, { name: 'aeob-sidebar', title: 'AEOmatic', icon: 'chart-line' },
 				el( PanelBody, {
 					title: __( '✦ Schema Generator', 'aeomatic' ),
 					initialOpen: true,

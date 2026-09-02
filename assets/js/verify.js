@@ -1,5 +1,5 @@
 /**
- * AEOmatic — AI based Answer Engine Optimization — verification page.
+ * AEOmatic — verification page.
  *
  * Fetches the live verification report from /wp-json/aeomatic/v1/verify
  * and renders it as a list with status icons and click-to-verify links.

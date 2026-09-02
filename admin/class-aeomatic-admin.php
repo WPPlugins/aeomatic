@@ -31,7 +31,7 @@ class AEOMATIC_Admin {
 
 	public function add_menu(): void {
 		add_menu_page(
-			__( 'AEOmatic — AI based Answer Engine Optimization', 'aeomatic' ),
+			__( 'AEOmatic — AI SEO & Schema for AI Search', 'aeomatic' ),
 			__( 'AEOmatic', 'aeomatic' ),
 			'manage_options',
 			self::MENU_SLUG,
@@ -42,7 +42,7 @@ class AEOMATIC_Admin {
 
 		add_submenu_page(
 			self::MENU_SLUG,
-			__( 'Dashboard — AEOmatic', 'aeomatic' ),
+			__( 'AI Readiness Dashboard — AEOmatic', 'aeomatic' ),
 			__( 'Dashboard', 'aeomatic' ),
 			'manage_options',
 			self::MENU_SLUG,
@@ -286,7 +286,7 @@ class AEOMATIC_Admin {
 					<?php esc_html_e( 'Enjoying AEOmatic?', 'aeomatic' ); ?>
 				</strong>
 				<p style="margin:4px 0 0; color:#50575e;">
-					<?php esc_html_e( 'If AEOmatic is helping your site get found by ChatGPT, Claude and Perplexity — a quick review on WordPress.org makes a huge difference. It takes less than a minute.', 'aeomatic' ); ?>
+					<?php esc_html_e( 'If AEOmatic has been useful for your site\'s AI readiness, a quick review on WordPress.org makes a real difference. It takes less than a minute.', 'aeomatic' ); ?>
 				</p>
 			</div>
 			<div style="display:flex; gap:10px; align-items:center; flex-shrink:0;">

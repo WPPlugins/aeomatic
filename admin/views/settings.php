@@ -13,7 +13,7 @@ $aeomatic_settings = AEOMATIC_Settings::all();
 settings_errors( 'aeomatic_messages' );
 ?>
 <div class="wrap aeob-wrap">
-	<h1><?php esc_html_e( 'AEOmatic — AI based Answer Engine Optimization — Settings', 'aeomatic' ); ?></h1>
+	<h1><?php esc_html_e( 'AEOmatic — Settings', 'aeomatic' ); ?></h1>
 
 	<form method="post" action="">
 		<?php wp_nonce_field( AEOMATIC_Admin::NONCE_ACTION ); ?>
@@ -28,7 +28,6 @@ settings_errors( 'aeomatic_messages' );
 				<strong><?php esc_html_e( 'SEO plugin status:', 'aeomatic' ); ?></strong>
 				<?php echo wp_kses_post( AEOMATIC_Conflict_Detector::get_status_html() ); ?>
 			</p>
-			<?php echo AEOMATIC_Conflict_Detector::get_diagnostic_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- output is self-escaped inside get_diagnostic_html() ?>
 		<?php endif; ?>
 		<table class="form-table" role="presentation">
 			<?php
@@ -127,14 +126,33 @@ settings_errors( 'aeomatic_messages' );
 
 		<h2 class="title"><?php esc_html_e( 'AI discovery headers', 'aeomatic' ); ?></h2>
 		<p class="description">
-			<?php esc_html_e( 'AEOmatic automatically adds these HTTP response headers to every public page. No configuration needed — they are always active.', 'aeomatic' ); ?>
+			<?php esc_html_e( 'Optional HTTP response headers added to public pages. These are proposed conventions, not a ratified standard — no AI vendor has published a commitment to read them. They are harmless to send and easy to turn off.', 'aeomatic' ); ?>
 		</p>
 		<table class="form-table" role="presentation">
 			<tr>
-				<th scope="row"><?php esc_html_e( 'Active headers', 'aeomatic' ); ?></th>
+				<th scope="row"><?php esc_html_e( 'Send AI discovery headers', 'aeomatic' ); ?></th>
 				<td>
+					<label>
+						<input type="hidden" name="aeob[ai_headers][enabled]" value="0" />
+						<input type="checkbox" name="aeob[ai_headers][enabled]" value="1" <?php checked( AEOMATIC_AI_Headers::is_enabled() ); ?> />
+						<?php esc_html_e( 'Emit X-AI-* headers and the ai-context Link header on public requests', 'aeomatic' ); ?>
+					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Headers sent', 'aeomatic' ); ?></th>
+				<td>
+					<?php if ( ! AEOMATIC_AI_Headers::is_enabled() ) : ?>
+						<p class="description"><?php esc_html_e( 'Disabled — no AI discovery headers are sent.', 'aeomatic' ); ?></p>
+					<?php else : ?>
 					<ul style="margin:0;padding:0;list-style:none;font-family:monospace;font-size:13px;line-height:2;">
-						<li>X-AI-Crawl: allowed</li>
+						<?php
+						// Mirrors AEOMATIC_AI_Headers::send(): the crawl value tracks the
+						// AI crawler control settings below rather than being hard-coded.
+						$aeomatic_crawlers      = (array) AEOMATIC_Settings::get( 'crawlers' );
+						$aeomatic_any_allowed   = empty( $aeomatic_crawlers ) || (bool) array_filter( $aeomatic_crawlers );
+						?>
+						<li>X-AI-Crawl: <?php echo esc_html( $aeomatic_any_allowed ? 'allowed' : 'restricted' ); ?></li>
 						<li>X-AI-Citeable: true</li>
 						<li>X-Content-License: free-to-cite-with-attribution</li>
 						<li>X-AI-Content-Type: human-authored</li>
@@ -154,9 +172,7 @@ settings_errors( 'aeomatic_messages' );
 						</li>
 						<?php endif; ?>
 					</ul>
-					<p class="description" style="margin-top:8px;">
-						<?php esc_html_e( 'These are emerging citation signals recognised by AI search engines. They complement robots.txt directives.', 'aeomatic' ); ?>
-					</p>
+					<?php endif; ?>
 				</td>
 			</tr>
 		</table>
@@ -336,7 +352,7 @@ settings_errors( 'aeomatic_messages' );
 
 		<h2 class="title"><?php esc_html_e( 'Content coverage', 'aeomatic' ); ?></h2>
 		<p class="description">
-			<?php esc_html_e( 'Choose which post types AEOmatic — AI based Answer Engine Optimization scans, scores, and adds schema to. Custom post types from your themes and plugins are auto-detected.', 'aeomatic' ); ?>
+			<?php esc_html_e( 'Choose which post types AEOmatic scans, scores, and adds schema to. Custom post types from your themes and plugins are auto-detected.', 'aeomatic' ); ?>
 		</p>
 		<?php
 		$aeomatic_pt_objects = AEOMATIC_Post_Types::get_public_post_types();
@@ -351,6 +367,8 @@ settings_errors( 'aeomatic_messages' );
 						$aeomatic_schema_for = AEOMATIC_Post_Types::detect_schema_type_by_slug( $aeomatic_slug );
 					?>
 						<label style="display:block;margin-bottom:6px;">
+							<?php // Hidden companion guarantees every rendered slug is present in POST as "0" when unchecked, so the save handler never has to guess whether the user cleared the box or the CPT was hidden. The checkbox's "1" overrides this when checked. ?>
+							<input type="hidden" name="aeob[post_types][<?php echo esc_attr( $aeomatic_slug ); ?>]" value="0" />
 							<input type="checkbox" name="aeob[post_types][<?php echo esc_attr( $aeomatic_slug ); ?>]" value="1" <?php checked( $aeomatic_is_enabled ); ?> />
 							<strong><?php echo esc_html( $aeomatic_obj->labels->name ); ?></strong>
 							<code style="margin-left:6px;"><?php echo esc_html( $aeomatic_slug ); ?></code>
@@ -380,7 +398,7 @@ settings_errors( 'aeomatic_messages' );
 
 		<h2 class="title"><?php esc_html_e( 'Page builders supported', 'aeomatic' ); ?></h2>
 		<p class="description">
-			<?php esc_html_e( 'AEOmatic — AI based Answer Engine Optimization automatically extracts content from these page builders. No configuration needed — just edit your pages as normal.', 'aeomatic' ); ?>
+			<?php esc_html_e( 'AEOmatic automatically extracts content from these page builders. No configuration needed — just edit your pages as normal.', 'aeomatic' ); ?>
 		</p>
 		<table class="form-table" role="presentation">
 			<tr>

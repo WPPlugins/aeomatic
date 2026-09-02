@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       AEOmatic — Answer Engine Optimization, GEO, AIO, LLM SEO
+ * Plugin Name:       AEOmatic — AI SEO, llms.txt & Schema Markup
  * Plugin URI:        https://wordpress.org/plugins/aeomatic/
- * Description:       Optimise your WordPress site for AI search engines (ChatGPT, Claude, Perplexity, Google AI Overviews). Auto-injects JSON-LD schema, generates llms.txt, controls AI crawlers, audits content for AEO readiness, and provides a FAQ block for answer engine extraction.
- * Version:           1.1.8
+ * Description:       AI search engines cannot cite what they cannot parse. Publishes JSON-LD structured data across 22 schema types with a visual field editor, an llms.txt index and per-bot robots.txt rules; scores how extractable your content is; and logs which AI crawlers hit your site and what HTTP status you served them. Reads content from Gutenberg, Elementor, Divi, Beaver Builder, Bricks, Oxygen, WPBakery and ACF. Runs beside your existing SEO plugin.
+ * Version:           1.1.9
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            mmtushar
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AEOMATIC_VERSION', '1.1.8' );
+define( 'AEOMATIC_VERSION', '1.1.9' );
 define( 'AEOMATIC_FILE', __FILE__ );
 define( 'AEOMATIC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AEOMATIC_URL', plugin_dir_url( __FILE__ ) );
@@ -45,6 +45,7 @@ require_once AEOMATIC_DIR . 'includes/class-aeomatic-crawler-control.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-audit.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-citation-gaps.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-ai-readiness.php';
+require_once AEOMATIC_DIR . 'includes/class-aeomatic-site-readiness.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-entity-scanner.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-blocks.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-verification.php';
@@ -68,7 +69,7 @@ function aeomatic_activate() {
 	flush_rewrite_rules();
 	AEOMATIC_Crawler_Log::schedule_cron();
 	AEOMATIC_Wizard::schedule_redirect();
-	AEOMATIC_Activity::log( 'plugin_activated', __( 'AEOmatic — AI based Answer Engine Optimization activated. Default settings applied, /llms.txt endpoint registered.', 'aeomatic' ) );
+	AEOMATIC_Activity::log( 'plugin_activated', __( 'AEOmatic activated. Default settings applied, /llms.txt endpoint registered.', 'aeomatic' ) );
 }
 register_activation_hook( __FILE__, 'aeomatic_activate' );
 

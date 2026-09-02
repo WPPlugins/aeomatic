@@ -100,9 +100,17 @@ class AEOMATIC_Analyzer_Trust implements AEOMATIC_Readiness_Analyzer_Interface {
 		return (int) floor( ( time() - $modified ) / DAY_IN_SECONDS );
 	}
 
+	/**
+	 * Merged html from the shared extractor — post_content plus page-builder
+	 * and ACF content. Builder links are invisible in post_content alone.
+	 */
+	private function extracted_html( WP_Post $post ): string {
+		return (string) ( AEOMATIC_Content_Extractor::extract( $post )['html'] ?? '' );
+	}
+
 	private function outbound_links_count( WP_Post $post ): int {
 		$home = wp_parse_url( home_url(), PHP_URL_HOST );
-		if ( ! preg_match_all( '/<a\s[^>]*href=["\']([^"\']+)["\']/i', (string) $post->post_content, $m ) ) {
+		if ( ! preg_match_all( '/<a\s[^>]*href=["\']([^"\']+)["\']/i', $this->extracted_html( $post ), $m ) ) {
 			return 0;
 		}
 		$count = 0;
@@ -117,7 +125,7 @@ class AEOMATIC_Analyzer_Trust implements AEOMATIC_Readiness_Analyzer_Interface {
 
 	private function promotional_ratio( WP_Post $post ): float {
 		$home = wp_parse_url( home_url(), PHP_URL_HOST );
-		if ( ! preg_match_all( '/<a\s[^>]*href=["\']([^"\']+)["\']/i', (string) $post->post_content, $m ) ) {
+		if ( ! preg_match_all( '/<a\s[^>]*href=["\']([^"\']+)["\']/i', $this->extracted_html( $post ), $m ) ) {
 			return 0.0;
 		}
 		$total = 0;

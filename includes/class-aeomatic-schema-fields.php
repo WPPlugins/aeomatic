@@ -65,7 +65,7 @@ class AEOMATIC_Schema_Fields {
 					array( 'key' => 'author_name',     'label' => 'Author name',       'type' => 'text',  'required' => true,  'help' => 'Defaults to post author display name.' ),
 					array( 'key' => 'author_url',      'label' => 'Author URL',        'type' => 'url',   'required' => false, 'help' => 'Link to author bio or LinkedIn profile.' ),
 					array( 'key' => 'publisher_name',  'label' => 'Publisher name',    'type' => 'text',  'required' => true,  'help' => 'Defaults to site name from Settings.' ),
-					array( 'key' => 'publisher_logo',  'label' => 'Publisher logo URL','type' => 'url',   'required' => false, 'help' => 'Defaults to logo from AEOmatic — AI based Answer Engine Optimization Settings.' ),
+					array( 'key' => 'publisher_logo',  'label' => 'Publisher logo URL','type' => 'url',   'required' => false, 'help' => 'Defaults to logo from AEOmatic Settings.' ),
 					array( 'key' => 'articleSection',  'label' => 'Article section',   'type' => 'text',  'required' => false, 'help' => 'e.g. "Technology", "Health". Defaults to primary category.' ),
 					array( 'key' => 'wordCount',       'label' => 'Word count',        'type' => 'number','required' => false, 'help' => 'Auto-counted from content.' ),
 				);

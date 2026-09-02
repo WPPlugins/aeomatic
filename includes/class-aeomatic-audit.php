@@ -514,7 +514,7 @@ class AEOMATIC_Audit {
 			'points' => $schema_enabled ? 15 : 0,
 			'max'    => 15,
 			'passed' => $schema_enabled,
-			'hint'   => __( 'Enable Article schema in AEOmatic — AI based Answer Engine Optimization settings.', 'aeomatic' ),
+			'hint'   => __( 'Enable Article schema in AEOmatic settings.', 'aeomatic' ),
 		);
 
 		// 5. Author bio + display name complete (10 pts).
@@ -591,7 +591,7 @@ class AEOMATIC_Audit {
 			'points' => $perf_passed ? 10 : 0,
 			'max'    => 10,
 			'passed' => $perf_passed,
-			'hint'   => __( 'Keep post HTML under 200KB. Slow pages get crawled less by AI bots.', 'aeomatic' ),
+			'hint'   => __( 'Keep post HTML under 200KB. Heavy pages are slower for any crawler to fetch and parse. Note: this check measures HTML size only, not real page load.', 'aeomatic' ),
 		);
 
 		// 10. Word count (5 pts).
@@ -607,8 +607,10 @@ class AEOMATIC_Audit {
 			'hint'   => sprintf( __( 'Aim for at least %d words. Thin content rarely gets cited.', 'aeomatic' ), $min_words ),
 		);
 
-		// 11. Statistics & data citations (10 pts) — Semrush finds posts with
-		// numerical stats and external citations get 30–40% more AI citations.
+		// 11. Statistics & data citations (10 pts). Rationale: a quantified claim
+		// with a source link is a self-contained, verifiable fragment, which is the
+		// shape AI answers quote. Deliberately not stated as a percentage uplift —
+		// no public dataset supports a specific number.
 		$stat_matches = 0;
 		// Numbers with % or quantifiers like "X% / X percent / $X / Xk users / X million".
 		if ( preg_match_all( '/\b\d{1,3}(?:[\.,]\d+)?\s*(?:%|percent|million|billion|thousand|k\b|users|customers|companies|sites|studies)\b/i', $content_text, $sm ) ) {
@@ -634,7 +636,7 @@ class AEOMATIC_Audit {
 			'points' => $stats_pts,
 			'max'    => 10,
 			'passed' => 10 === $stats_pts,
-			'hint'   => __( 'Cite ≥2 numerical statistics and link to ≥1 external authoritative source. Posts with verifiable data are cited 30–40% more often by AI engines.', 'aeomatic' ),
+			'hint'   => __( 'Cite at least 2 numerical statistics and link to at least 1 external authoritative source. A quantified, sourced claim is a self-contained fragment an AI answer can quote and attribute.', 'aeomatic' ),
 		);
 
 		// 12. First-hand experience markers (5 pts) — Google E-E-A-T signal.

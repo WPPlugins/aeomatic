@@ -658,11 +658,15 @@ class AEOMATIC_Content_Extractor {
 	}
 
 	private static function walk_elementor( array $nodes, array &$buf ): void {
+		// Note: 'header_size' is deliberately NOT in this list. It holds a tag
+		// name ('h2'), not content — collecting it injected the literal string
+		// "h2" into the extracted text. It is consumed by elementor_heading()
+		// instead, to rebuild the real tag.
 		$text_keys = array(
 			'title', 'heading_text', 'editor', 'text', 'content', 'description',
 			'subtitle', 'caption', 'cta_text', 'button_text', 'tab_title',
 			'tab_content', 'item_title', 'item_description', 'testimonial_content',
-			'price_subscript', 'price_currency_symbol', 'header_size', 'alt',
+			'price_subscript', 'price_currency_symbol', 'alt',
 			'image_alt',
 		);
 		foreach ( $nodes as $node ) {
@@ -670,20 +674,58 @@ class AEOMATIC_Content_Extractor {
 				continue;
 			}
 			if ( ! empty( $node['settings'] ) && is_array( $node['settings'] ) ) {
+				$settings = $node['settings'];
+
+				// Rebuild heading widgets as real <hN> markup. Without this the
+				// heading level is lost and downstream heading-hierarchy and
+				// question-heading checks see only a bare line of text.
+				$heading = self::elementor_heading( $settings );
+				if ( '' !== $heading ) {
+					$buf[] = $heading;
+				}
+
+				// Widget links live in settings.link.url rather than as <a href>,
+				// so internal/outbound link checks could not see them. Built before
+				// the text loop so the key that supplied the label can be skipped.
+				$anchor       = self::elementor_link( $settings );
+				$anchor_label = self::elementor_link_label_key( $settings );
+
 				foreach ( $text_keys as $k ) {
-					if ( ! empty( $node['settings'][ $k ] ) && is_string( $node['settings'][ $k ] ) ) {
-						$buf[] = $node['settings'][ $k ];
+					// Skip anything already emitted inside a tag above — otherwise a
+					// heading title or a button label is counted twice in word and
+					// entity counts.
+					if ( 'title' === $k && '' !== $heading ) {
+						continue;
+					}
+					if ( '' !== $anchor && $k === $anchor_label ) {
+						continue;
+					}
+					if ( ! empty( $settings[ $k ] ) && is_string( $settings[ $k ] ) ) {
+						$buf[] = $settings[ $k ];
 					}
 				}
+
+				if ( '' !== $anchor ) {
+					$buf[] = $anchor;
+				}
+
 				// Repeater fields.
-				foreach ( $node['settings'] as $key => $val ) {
+				foreach ( $settings as $key => $val ) {
 					if ( is_array( $val ) ) {
 						foreach ( $val as $row ) {
 							if ( is_array( $row ) ) {
+								$row_anchor = self::elementor_link( $row );
+								$row_label  = self::elementor_link_label_key( $row );
 								foreach ( $text_keys as $tk ) {
+									if ( '' !== $row_anchor && $tk === $row_label ) {
+										continue;
+									}
 									if ( ! empty( $row[ $tk ] ) && is_string( $row[ $tk ] ) ) {
 										$buf[] = $row[ $tk ];
 									}
+								}
+								if ( '' !== $row_anchor ) {
+									$buf[] = $row_anchor;
 								}
 							}
 						}
@@ -694,6 +736,69 @@ class AEOMATIC_Content_Extractor {
 				self::walk_elementor( $node['elements'], $buf );
 			}
 		}
+	}
+
+	/**
+	 * Rebuild an Elementor heading widget as <hN>text</hN>.
+	 *
+	 * Returns '' when the node is not a heading (no valid header_size), which
+	 * is the common case — most widgets carry a 'title' with no level.
+	 *
+	 * @param array $settings Elementor widget settings.
+	 */
+	private static function elementor_heading( array $settings ): string {
+		if ( empty( $settings['title'] ) || ! is_string( $settings['title'] ) ) {
+			return '';
+		}
+		$tag = isset( $settings['header_size'] ) && is_string( $settings['header_size'] )
+			? strtolower( trim( $settings['header_size'] ) )
+			: '';
+		if ( ! preg_match( '/^h[1-6]$/', $tag ) ) {
+			return '';
+		}
+		return sprintf( '<%1$s>%2$s</%1$s>', $tag, wp_strip_all_tags( $settings['title'] ) );
+	}
+
+	/**
+	 * Rebuild an Elementor widget link as an <a href> anchor.
+	 *
+	 * Returns '' when the node carries no URL.
+	 *
+	 * @param array $settings Elementor widget settings or repeater row.
+	 */
+	private static function elementor_link( array $settings ): string {
+		$url = '';
+		if ( isset( $settings['link'] ) && is_array( $settings['link'] ) && ! empty( $settings['link']['url'] ) && is_string( $settings['link']['url'] ) ) {
+			$url = $settings['link']['url'];
+		} elseif ( ! empty( $settings['url'] ) && is_string( $settings['url'] ) ) {
+			$url = $settings['url'];
+		}
+		if ( '' === trim( $url ) ) {
+			return '';
+		}
+
+		$label_key = self::elementor_link_label_key( $settings );
+		$label     = '' !== $label_key ? wp_strip_all_tags( (string) $settings[ $label_key ] ) : '';
+
+		return sprintf( '<a href="%s">%s</a>', esc_url_raw( $url ), $label );
+	}
+
+	/**
+	 * Which settings key supplies an anchor's visible label, if any.
+	 *
+	 * Shared by elementor_link() and the text-collection loop so the label is
+	 * emitted exactly once — inside the anchor, not also as a bare line.
+	 *
+	 * @param array $settings Elementor widget settings or repeater row.
+	 * @return string Key name, or '' when none applies.
+	 */
+	private static function elementor_link_label_key( array $settings ): string {
+		foreach ( array( 'text', 'button_text', 'title' ) as $k ) {
+			if ( ! empty( $settings[ $k ] ) && is_string( $settings[ $k ] ) ) {
+				return $k;
+			}
+		}
+		return '';
 	}
 
 	/**
@@ -934,6 +1039,21 @@ class AEOMATIC_Content_Extractor {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Plain-text-only convenience wrapper around extract().
+	 *
+	 * The readiness analyzers only need the normalised text, and calling this
+	 * instead of wp_strip_all_tags( post_content ) means page-builder and ACF
+	 * content is scored on what is actually rendered rather than on an empty
+	 * or shortcode-only post_content.
+	 *
+	 * @param WP_Post|int $post_or_id
+	 */
+	public static function extract_text( $post_or_id ): string {
+		$extracted = self::extract( $post_or_id );
+		return trim( (string) ( $extracted['text'] ?? '' ) );
 	}
 
 	private static function empty_result(): array {

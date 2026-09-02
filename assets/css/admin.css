@@ -273,3 +273,37 @@
 .aeob-timeline li:last-child {
 	border-bottom: none;
 }
+
+/* ── AI Readiness dashboard ──────────────────────────────────────────── */
+
+/*
+* Neutral pill for informational counts. Defined as its own modifier rather
+* than restyling .aeob-pill, which would override the --ok/--warn/--err rules
+* above at equal specificity.
+*/
+.aeob-pill--muted {
+	background: #f0f0f1;
+	color: #50575e;
+}
+
+/* A category with no data to score yet (e.g. no published posts to sample). */
+.aeob-score-big.score-none {
+	color: #8c8f94;
+	font-weight: 500;
+}
+
+.aeob-recommendations {
+	margin: 12px 0 16px;
+	padding-left: 22px;
+}
+
+.aeob-recommendations li strong {
+	font-size: 14px;
+}
+
+/* Check rows inside a category card: keep the status pill from stretching. */
+.aeob-status-list li .aeob-pill {
+	min-width: 22px;
+	text-align: center;
+	margin-right: 6px;
+}

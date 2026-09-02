@@ -127,7 +127,9 @@ class AEOMATIC_Analyzer_Authority implements AEOMATIC_Readiness_Analyzer_Interfa
 	}
 
 	private function has_authoritative_outbound( WP_Post $post ): bool {
-		if ( ! preg_match_all( '/<a\s[^>]*href=["\']([^"\']+)["\']/i', (string) $post->post_content, $m ) ) {
+		// Extracted html, not post_content: builder links live in post meta.
+		$html = (string) ( AEOMATIC_Content_Extractor::extract( $post )['html'] ?? '' );
+		if ( ! preg_match_all( '/<a\s[^>]*href=["\']([^"\']+)["\']/i', $html, $m ) ) {
 			return false;
 		}
 		foreach ( $m[1] as $url ) {
