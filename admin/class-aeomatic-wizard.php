@@ -40,14 +40,22 @@ class AEOMATIC_Wizard {
 	 * accessed via ?page=aeomatic-wizard.
 	 */
 	public function register_page(): void {
+		// Registered under the plugin's own menu and then hidden, rather than
+		// with a null parent. A null parent leaves WordPress unable to resolve
+		// $title for the screen, which shows up as a strip_tags(null)
+		// deprecation from wp-admin/admin-header.php on every load under
+		// PHP 8.1+ (and leaves the browser tab title empty).
 		add_submenu_page(
-			null,
+			AEOMATIC_Admin::MENU_SLUG,
 			__( 'AEOmatic Setup', 'aeomatic' ),
 			__( 'AEOmatic Setup', 'aeomatic' ),
 			'manage_options',
 			self::SLUG,
 			array( $this, 'render' )
 		);
+
+		// Keep it reachable by URL but out of the sidebar.
+		remove_submenu_page( AEOMATIC_Admin::MENU_SLUG, self::SLUG );
 	}
 
 	/**
@@ -200,7 +208,7 @@ class AEOMATIC_Wizard {
 		$schema['org_sameas'] = implode( "\n", array_filter( $urls ) );
 
 		$all['schema'] = $schema;
-		update_option( AEOMATIC_OPTION_KEY, $all );
+		AEOMATIC_Settings::put( $all );
 	}
 
 	private function handle_crawlers(): void {
@@ -212,7 +220,7 @@ class AEOMATIC_Wizard {
 			$all['crawlers'][ $bot ] = ! empty( $crawlers[ $bot ] );
 		}
 
-		update_option( AEOMATIC_OPTION_KEY, $all );
+		AEOMATIC_Settings::put( $all );
 		flush_rewrite_rules();
 	}
 

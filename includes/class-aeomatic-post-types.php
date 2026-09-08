@@ -62,7 +62,17 @@ class AEOMATIC_Post_Types {
 			}
 		}
 
-		self::$supported_cache = $result;
+		// Only memoise once `init` has fully completed — `wp_loaded` is the
+		// first hook that guarantees it, whatever priority a post type
+		// registered on. Caching earlier freezes the map to whichever types
+		// happened to exist at that moment; a single caller at plugins_loaded
+		// was enough to make every CPT look disabled for the whole request,
+		// no matter what was stored. Callers that legitimately run before
+		// then still get a correct answer, just an uncached one.
+		if ( did_action( 'wp_loaded' ) ) {
+			self::$supported_cache = $result;
+		}
+
 		return $result;
 	}
 

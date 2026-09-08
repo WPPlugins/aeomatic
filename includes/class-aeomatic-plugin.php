@@ -72,9 +72,9 @@ class AEOMATIC_Plugin {
 		AEOMATIC_LLMs_Txt::register_rewrites();
 		flush_rewrite_rules();
 
-		$all                                = AEOMATIC_Settings::all();
-		$all['_meta']['installed_version']  = AEOMATIC_VERSION;
-		update_option( AEOMATIC_OPTION_KEY, $all );
+		$all                               = AEOMATIC_Settings::all();
+		$all['_meta']['installed_version'] = AEOMATIC_VERSION;
+		AEOMATIC_Settings::put( $all );
 
 		AEOMATIC_Activity::log(
 			'plugin_updated',

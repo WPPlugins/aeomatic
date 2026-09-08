@@ -105,7 +105,7 @@ class AEOMATIC_SEO_Importer {
 
 		$current['schema']   = $schema;
 		$current['llms_txt'] = $llms;
-		update_option( AEOMATIC_OPTION_KEY, $current );
+		AEOMATIC_Settings::put( $current );
 
 		return $applied;
 	}

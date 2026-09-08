@@ -129,7 +129,24 @@ class AEOMATIC_Settings {
 	public static function save( array $input ): bool {
 		$current = self::all();
 		$clean   = self::sanitise( $input, $current );
-		$ok      = update_option( AEOMATIC_OPTION_KEY, $clean );
+		return self::put( $clean );
+	}
+
+	/**
+	 * Persist a complete settings array and keep every cache coherent.
+	 *
+	 * Every writer must go through this rather than calling update_option()
+	 * directly. A direct write leaves two caches stale for the rest of the
+	 * request — Settings::$cache and AEOMATIC_Post_Types::$supported_cache —
+	 * so a later reader in the same request sees pre-write values. That is
+	 * how the settings save could write back a stale _meta.installed_version
+	 * after maybe_upgrade() had just bumped it, leaving the upgrade routine
+	 * re-firing (and re-flushing rewrite rules) on every admin page load.
+	 *
+	 * @param array $all Complete settings array.
+	 */
+	public static function put( array $all ): bool {
+		$ok = update_option( AEOMATIC_OPTION_KEY, $all );
 
 		// Defeat every downstream cache that could return stale data on the
 		// remainder of this request:
@@ -140,7 +157,7 @@ class AEOMATIC_Settings {
 		//      object cache (Redis, Memcached) held the previous value.
 		//   3. Post_Types static map is flushed so get_enabled_map() re-reads
 		//      the fresh post_types section on next call.
-		self::$cache = $clean;
+		self::$cache = $all;
 		wp_cache_delete( AEOMATIC_OPTION_KEY, 'options' );
 		if ( class_exists( 'AEOMATIC_Post_Types' ) ) {
 			AEOMATIC_Post_Types::flush_cache();
@@ -230,11 +247,39 @@ class AEOMATIC_Settings {
 			// The settings view pairs every checkbox with a hidden "0" companion,
 			// so $_POST always enumerates every rendered slug with the user's
 			// explicit intent. We trust POST here and merge over the current
-			// saved map — that way slugs not on the page (e.g. CPTs registered
-			// on a later hook than admin_init on some earlier request) keep
-			// their prior state instead of being dropped.
+			// saved map — that way slugs not on the page keep their prior state
+			// instead of being dropped.
+			//
+			// Slugs are resolved against the post types actually registered
+			// rather than passed through sanitize_key(). sanitize_key()
+			// lowercases and strips anything outside [a-z0-9_-], so a CPT
+			// registered as "MyCPT" was saved under "mycpt" while the render
+			// path looked it up by "MyCPT" — the lookup missed, fell through to
+			// the default-ON branch, and the checkbox could never be turned off.
+			$registered = array();
+			if ( class_exists( 'AEOMATIC_Post_Types' ) ) {
+				$registered = array_keys( AEOMATIC_Post_Types::get_public_post_types() );
+			}
+			$by_sanitised = array();
+			foreach ( $registered as $known_slug ) {
+				$by_sanitised[ sanitize_key( $known_slug ) ] = $known_slug;
+			}
+
 			foreach ( $input['post_types'] as $raw_slug => $val ) {
-				$slug = sanitize_key( (string) $raw_slug );
+				$raw_slug = (string) $raw_slug;
+
+				if ( in_array( $raw_slug, $registered, true ) ) {
+					// Exact match on a live post type — store under its real slug.
+					$slug = $raw_slug;
+				} elseif ( isset( $by_sanitised[ sanitize_key( $raw_slug ) ] ) ) {
+					// Submitted key differs only by sanitisation; map it back.
+					$slug = $by_sanitised[ sanitize_key( $raw_slug ) ];
+				} else {
+					// Not currently registered (plugin deactivated, say). Keep a
+					// sanitised key so the preference survives reactivation.
+					$slug = sanitize_key( $raw_slug );
+				}
+
 				if ( '' === $slug || 'attachment' === $slug ) {
 					continue;
 				}

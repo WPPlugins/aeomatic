@@ -1,18 +1,18 @@
-=== AEOmatic — AI SEO, llms.txt & Schema Markup ===
+=== AEOmatic — AEO, AI SEO, llms.txt & Schema ===
 Contributors: mmtushar
 Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
-Tested up to: 7.0.2
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.1.9
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Make WordPress readable to AI search: 22 schema types with a visual JSON-LD editor, llms.txt, and AI crawler control. Reads Elementor, Divi and ACF.
+AEO and AI SEO for WordPress: 22 schema types, a visual JSON-LD editor, llms.txt, and AI crawler control. Reads Elementor, Divi and ACF.
 
 == Description ==
 
-AI search engines cannot cite what they cannot parse. AEOmatic makes your WordPress content machine-readable — then shows you what the crawlers actually got.
+**Answer Engine Optimization (AEO) for WordPress.** AI search engines cannot cite what they cannot parse. AEOmatic makes your WordPress content machine-readable — then shows you what the crawlers actually got.
 
 It does three jobs:
 
@@ -218,6 +218,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.0 =
+Fixes custom post types not staying selected under Settings → Content coverage (your saved selections were never lost — only mis-displayed, so nothing needs re-saving). Also important for Elementor, Divi, Bricks, Oxygen, Beaver Builder and WPBakery sites: readiness checks were reading post_content directly and scoring builder pages as empty. Expect scores to rise after updating. Also fixes post types whose slug is not plain lowercase being impossible to disable, and a settings save leaving the upgrade routine re-flushing rewrite rules on every admin page load.
+
 = 1.1.9 =
 Fixes page-builder and ACF pages being scored as empty across six readiness checks — expect scores to rise on Elementor, Divi, Bricks, Oxygen, Beaver Builder and WPBakery sites. Renamed, with a new AI Readiness dashboard, an AI crawler log that records the HTTP status served to each bot, and a first-audit onboarding step. Fixes two readiness checks that were silently degraded, tightens the per-post citation-gaps permission check, caches and bounds /llms.txt and /llms-full.txt, and makes uninstall remove everything it should. Recommended update.
 
@@ -226,15 +229,17 @@ Conflict detection now respects your SEO plugin's own schema settings, and custo
 
 == Changelog ==
 
-= 1.1.9 =
+= 1.2.0 =
 
-Renamed to **AEOmatic — AI SEO, llms.txt & Schema Markup**, plus a new site-level AI readiness score, a first-audit onboarding step, richer crawler analytics, and a set of correctness, security and performance fixes.
+**Fixes the Content coverage bug where custom post types would not stay selected.** Also: page-builder and ACF pages are no longer scored as empty — the significant one, and the reason to update. Plus two settings-layer fixes, and two defects found by running 1.1.9 on a real WordPress install for the first time.
 
-* **New: site-wide AI Readiness score with three categories.** A new `AEOMATIC_Site_Readiness` module aggregates what the plugin already measures into Technical readiness (direct checks on llms.txt, schema, organisation identity, permalinks, AI headers and duplicate-schema conflicts), Content readiness (mean of the per-post Content and Entities readiness categories across your 20 most recently modified published items) and AI crawler access (share of AI crawlers your robots.txt settings allow, with answer-time retrieval crawlers weighted separately from training crawlers). Every category declares whether it is a direct check or a heuristic, and the overall score is an unweighted mean with no-data categories excluded rather than counted as zero. Exposed at `GET /wp-json/aeomatic/v1/readiness/site` (`manage_options`).
-* **New: rebuilt dashboard as an AI Readiness dashboard.** Overall score, three category cards each labelled "Direct check" or "Heuristic", issue count, top three recommendations with deep links, an "Improve my site" action, and an AI crawler activity table. Copy states explicitly that readiness is not visibility and that a crawler visit is not a citation.
-* **New: the setup wizard now runs a real audit.** A sixth step between "AI crawlers" and "Verify" runs a fresh site readiness audit and shows the score, the category breakdown and the three highest-value fixes with links that open in a new tab. Onboarding now ends with the user knowing what to do next instead of only having filled in settings.
-* **New: AI crawler log records user agent and response status.** Entries now carry the truncated user-agent string and the HTTP status the site returned, so a 404 or 403 being served to GPTBot is visible. The write is deferred to `shutdown` because the status code is not final earlier in the request. A new `AEOMATIC_Crawler_Log::get_breakdown()` returns per-bot visits, error counts, last-seen time and last URL. Still no IP addresses, cookies or visitor data.
-* **New: AI discovery headers are now a setting.** `AEOMATIC_Analyzer_Technical` already read an `ai_headers.enabled` setting that was never declared, so the check silently always passed. The setting now exists, defaults to on for existing installs, and has a toggle in Settings. `X-AI-Crawl` now reports `restricted` instead of `allowed` when every AI crawler is blocked, rather than contradicting the site's own robots.txt.
+* **Fix: custom post types now stay selected in Settings → Content coverage.** Reported after 1.1.9, and previously "fixed" twice in 1.1.7 and 1.1.8 by changing the saving code — which was never the problem. The stored setting was always correct; only the redisplay was wrong.
+
+  `AEOMATIC_Bulk_Actions::register()` read the post-type list at `plugins_loaded`. That is before `init`, so before any custom post type has been registered — it returned just `post` and `page`, **and cached that incomplete list** in `AEOMATIC_Post_Types` for the remainder of the request. The Settings screen then asked for the post-type objects fresh (getting all of them, so every row rendered) but asked for the enabled map from that frozen cache, so every custom post type came back as disabled no matter what was stored. Because the class is only loaded when `is_admin()` is true, this only ever went wrong on admin screens — which is exactly where the checkboxes live.
+
+  Two changes: the bulk-action registration is deferred to `admin_init`, by which point every post type exists; and `AEOMATIC_Post_Types::get_enabled_map()` now only caches once `wp_loaded` has fired, so no future caller running early can freeze an incomplete list again. Callers that legitimately run before then still get a correct answer, just an uncached one.
+
+  Nothing needs re-saving after updating — your stored selections were never wrong and will simply display correctly again.
 * **Fix: page-builder and ACF pages are no longer scored as empty.** This is the big one. Six readiness checks read `$post->post_content` directly instead of going through the shared content extractor, so on an Elementor, Divi, Bricks, Oxygen, Beaver Builder or WPBakery site — where the body lives in post meta — they saw a near-empty string and deducted points for content that was plainly there: Content lost 30 (no headings, no FAQ structure), Entities 25 (no named entities), Technical 20 ("body under 20 words"), Trust 25 (no outbound links) and Authority 20 (no authoritative outbound). All six now read the extractor, which merges post_content, page-builder data and ACF fields.
 
   The Technical analyzer's message was the worst of it: it told page-builder users *"content may be JS-only or hidden behind a page builder that AI crawlers cannot parse"* — fired **because** they used a page builder, on content that server-renders perfectly well. Rewritten to describe what it now actually measures.
@@ -242,6 +247,22 @@ Renamed to **AEOmatic — AI SEO, llms.txt & Schema Markup**, plus a new site-le
   **Expect readiness scores to rise on page-builder sites after updating.** That is the correction landing, not new optimisation.
 * **Fix: Elementor headings and links are now visible to the analysers.** The Elementor extractor flattened everything to bare text, so a Heading widget lost its level entirely — `settings.title` became a plain line and `settings.header_size` (which holds `h2`) was being collected *as content*, injecting the literal string "h2" into the extracted text. Heading widgets are now rebuilt as real `<hN>` markup, and widget links in `settings.link.url` are rebuilt as `<a href>` anchors so internal and outbound link counts can see them. Heading titles and button labels are emitted exactly once, not twice.
 * **Fix: the "generate meta description" quick-fix works on page-builder pages.** It summarised `post_content`, so on a builder page it returned "Post has no content to summarise". It now summarises extracted text.
+* **Fix: the setup wizard no longer promises AI citations.** Its welcome headline read "let’s get you cited by AI" — the exact claim removed from the readme, the dashboard and the audit hints in 1.1.9. It is the one screen only reachable by running the plugin, so it was missed. Now reads "Let’s make your site readable to AI search."
+* **Fix: the wizard screen no longer emits a PHP deprecation on every load.** It was registered with `add_submenu_page( null, … )`. A null parent slug leaves WordPress unable to resolve `$title` for the screen, producing a `strip_tags(): Passing null` deprecation from `wp-admin/admin-header.php` under PHP 8.1+ and an empty browser tab title. It is now registered under the plugin’s own menu and immediately hidden with `remove_submenu_page()`.
+* **Fix: post types whose slug is not already lowercase-alphanumeric can now be disabled.** `AEOMATIC_Settings::sanitise()` passed every submitted slug through `sanitize_key()`, which lowercases and strips anything outside `[a-z0-9_-]`. A post type registered as `MyCPT` was therefore stored under `mycpt`, while the settings view looked it up by `MyCPT` — the lookup missed, fell through to the default-ON branch, and the checkbox sprang back on however many times you unticked it. Submitted slugs are now resolved against the post types actually registered and stored under their real slug. Slugs already matching `[a-z0-9_-]` were unaffected.
+* **Fix: saving settings could leave the upgrade routine re-firing on every admin page load.** Five places wrote the settings option with `update_option()` directly, bypassing `AEOMATIC_Settings::save()` and so leaving both the settings request cache and the post-type map stale for the rest of the request. Concretely: `maybe_upgrade()` is registered on `admin_init` before the settings save handler, so when both ran in one request the save wrote back the pre-upgrade `installed_version` — and `maybe_upgrade()` then fired again on every subsequent admin request, calling `flush_rewrite_rules()` each time. All writers now go through a single `AEOMATIC_Settings::put()` that keeps both caches coherent.
+
+The Content coverage report is fixed in this release — see the first entry above. It took three attempts because the previous two looked in the wrong place: the saving code was correct all along, and the stored data was correct all along. Only the redisplay was wrong.
+
+= 1.1.9 =
+
+Renamed to **AEOmatic — AEO, AI SEO, llms.txt & Schema**, plus a new site-level AI readiness score, a first-audit onboarding step, richer crawler analytics, and a set of correctness, security and performance fixes.
+
+* **New: site-wide AI Readiness score with three categories.** A new `AEOMATIC_Site_Readiness` module aggregates what the plugin already measures into Technical readiness (direct checks on llms.txt, schema, organisation identity, permalinks, AI headers and duplicate-schema conflicts), Content readiness (mean of the per-post Content and Entities readiness categories across your 20 most recently modified published items) and AI crawler access (share of AI crawlers your robots.txt settings allow, with answer-time retrieval crawlers weighted separately from training crawlers). Every category declares whether it is a direct check or a heuristic, and the overall score is an unweighted mean with no-data categories excluded rather than counted as zero. Exposed at `GET /wp-json/aeomatic/v1/readiness/site` (`manage_options`).
+* **New: rebuilt dashboard as an AI Readiness dashboard.** Overall score, three category cards each labelled "Direct check" or "Heuristic", issue count, top three recommendations with deep links, an "Improve my site" action, and an AI crawler activity table. Copy states explicitly that readiness is not visibility and that a crawler visit is not a citation.
+* **New: the setup wizard now runs a real audit.** A sixth step between "AI crawlers" and "Verify" runs a fresh site readiness audit and shows the score, the category breakdown and the three highest-value fixes with links that open in a new tab. Onboarding now ends with the user knowing what to do next instead of only having filled in settings.
+* **New: AI crawler log records user agent and response status.** Entries now carry the truncated user-agent string and the HTTP status the site returned, so a 404 or 403 being served to GPTBot is visible. The write is deferred to `shutdown` because the status code is not final earlier in the request. A new `AEOMATIC_Crawler_Log::get_breakdown()` returns per-bot visits, error counts, last-seen time and last URL. Still no IP addresses, cookies or visitor data.
+* **New: AI discovery headers are now a setting.** `AEOMATIC_Analyzer_Technical` already read an `ai_headers.enabled` setting that was never declared, so the check silently always passed. The setting now exists, defaults to on for existing installs, and has a toggle in Settings. `X-AI-Crawl` now reports `restricted` instead of `allowed` when every AI crawler is blocked, rather than contradicting the site's own robots.txt.
 * **Fix: `AEOMATIC_Content_Extractor::extract_text()` now exists.** The Content readiness analyzer called it behind a `method_exists()` guard and silently fell back to `wp_strip_all_tags( $post->post_content )` — so page-builder and ACF content was scored as thin or empty. Same class of bug fixed for the Entity Scanner in 1.1.7; this was the remaining caller.
 * **Fix: `AEOMATIC_LLMs_Txt::is_post_included()` now exists.** The Technical readiness analyzer called it behind a guard and fell back to a post-type check, so a post excluded from llms.txt by a disabled feature or a password was still scored as included.
 * **Fix: uninstall now removes everything.** `uninstall.php` deleted 7 of the 16 post-meta keys the plugin writes and leaked the `aeomatic_crawler_log_stats` and `aeomatic_wizard_completed` options. It now clears all 9 options, 6 transients, the scheduled purge hook and all 16 meta keys — readiness, citation-gap and entity-scan results included.

@@ -334,7 +334,7 @@ class AEOMATIC_Conflict_Detector {
 					$settings['schema'][ $key ] = false;
 				}
 			}
-			update_option( AEOMATIC_OPTION_KEY, $settings );
+			AEOMATIC_Settings::put( $settings );
 			update_option( self::NOTICE_DISMISSED_KEY, true );
 
 			AEOMATIC_Activity::log(

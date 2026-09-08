@@ -27,6 +27,25 @@ class AEOMATIC_Bulk_Actions {
 	const MAX_PER_BATCH = 50;
 
 	public function register(): void {
+		// Deferred to admin_init on purpose. register() runs at plugins_loaded,
+		// which is before `init` and therefore before any custom post type has
+		// been registered. Reading the post-type list that early returned only
+		// the built-in types AND cached that incomplete list in
+		// AEOMATIC_Post_Types for the rest of the request — which is what made
+		// every CPT checkbox in Settings → Content coverage render unchecked
+		// regardless of what was saved.
+		//
+		// bulk_actions-edit-* and handle_bulk_actions-edit-* are only consumed
+		// while a list table renders, which is later than admin_init, so
+		// nothing is lost by waiting.
+		add_action( 'admin_init', array( $this, 'register_bulk_actions' ) );
+		add_action( 'admin_notices', array( $this, 'maybe_show_notice' ) );
+	}
+
+	/**
+	 * Attach the bulk action to every enabled post type's list screen.
+	 */
+	public function register_bulk_actions(): void {
 		$types = AEOMATIC_Post_Types::get_enabled_slugs();
 		if ( empty( $types ) ) {
 			$types = array( 'post' );
@@ -36,8 +55,6 @@ class AEOMATIC_Bulk_Actions {
 			add_filter( 'bulk_actions-edit-' . $post_type, array( $this, 'add_bulk_action' ) );
 			add_filter( 'handle_bulk_actions-edit-' . $post_type, array( $this, 'handle_bulk_action' ), 10, 3 );
 		}
-
-		add_action( 'admin_notices', array( $this, 'maybe_show_notice' ) );
 	}
 
 	public function add_bulk_action( array $actions ): array {

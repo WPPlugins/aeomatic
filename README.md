@@ -1,6 +1,6 @@
 # AEOmatic
 
-## AI SEO, llms.txt & Schema Markup for WordPress
+## AEO, AI SEO, llms.txt & Schema for WordPress
 
 **AI search engines cannot cite what they cannot parse.** AEOmatic makes WordPress content machine-readable — then shows you what the crawlers actually got.
 

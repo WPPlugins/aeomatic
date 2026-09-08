@@ -144,7 +144,7 @@ $crawler_groups = array(
 
 			<?php if ( 'welcome' === $step ) : ?>
 				<div class="aeom-wiz__head">
-					<h1><?php esc_html_e( 'Welcome — let\'s get you cited by AI.', 'aeomatic' ); ?></h1>
+					<h1><?php esc_html_e( 'Let\'s make your site readable to AI search.', 'aeomatic' ); ?></h1>
 					<p><?php esc_html_e( 'This takes about a minute. We\'ll import what you already have, fill in the gaps, and prove it works.', 'aeomatic' ); ?></p>
 				</div>
 				<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;">
