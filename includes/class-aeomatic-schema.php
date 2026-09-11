@@ -171,10 +171,30 @@ class AEOMATIC_Schema {
 		}
 
 		foreach ( $blocks as $b ) {
-			wp_print_inline_script_tag(
-				wp_json_encode( $b, JSON_HEX_TAG | JSON_HEX_AMP ),
-				array( 'type' => 'application/ld+json' )
+			// JSON-LD is parsed by machines but read by people — in page source,
+			// in Google's Rich Results Test, and in support threads. The previous
+			// flags (JSON_HEX_TAG | JSON_HEX_AMP) combined with PHP's defaults
+			// turned every & into \u0026, every < and > into \u003C / \u003E,
+			// every / into \/ and every accented or non-Latin character into
+			// \uXXXX — all on one unbroken line. That output is valid and Google
+			// accepts it, but it is unreadable, and correct schema looked broken.
+			// Worse for non-English sites: a German or Japanese headline became
+			// nothing but escape sequences.
+			$json = wp_json_encode(
+				$b,
+				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT
 			);
+			if ( false === $json ) {
+				continue;
+			}
+
+			// The one escape still required. A literal "</" inside a string value
+			// would close the <script> element early, so it is re-escaped as
+			// "<\/" — valid JSON, and it leaves "https://" alone because that
+			// is "//" rather than "</".
+			$json = str_replace( '</', '<\/', $json );
+
+			wp_print_inline_script_tag( $json, array( 'type' => 'application/ld+json' ) );
 		}
 
 		if ( ! empty( $blocks ) ) {
