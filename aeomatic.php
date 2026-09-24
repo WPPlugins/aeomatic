@@ -3,7 +3,7 @@
  * Plugin Name:       AEOmatic — AEO, AI SEO, llms.txt & Schema
  * Plugin URI:        https://wordpress.org/plugins/aeomatic/
  * Description:       AI search engines cannot cite what they cannot parse. Publishes JSON-LD structured data across 22 schema types with a visual field editor, an llms.txt index and per-bot robots.txt rules; scores how extractable your content is; and logs which AI crawlers hit your site and what HTTP status you served them. Reads content from Gutenberg, Elementor, Divi, Beaver Builder, Bricks, Oxygen, WPBakery and ACF. Runs beside your existing SEO plugin.
- * Version:           1.2.1
+ * Version:           1.2.2
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            mmtushar
@@ -20,7 +20,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AEOMATIC_VERSION', '1.2.1' );
+define( 'AEOMATIC_VERSION', '1.2.2' );
+// Extension API contract — bumped only on breaking changes to hooks/classes
+// consumed by extensions (currently AEOmatic Pro). Independent of AEOMATIC_VERSION.
+define( 'AEOMATIC_API_VERSION', '1.0.0' );
 define( 'AEOMATIC_FILE', __FILE__ );
 define( 'AEOMATIC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AEOMATIC_URL', plugin_dir_url( __FILE__ ) );
@@ -29,6 +32,7 @@ define( 'AEOMATIC_OPTION_KEY', 'aeomatic_settings' );
 
 // PSR-style includes.
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-plugin.php';
+require_once AEOMATIC_DIR . 'includes/class-aeomatic-extensions.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-settings.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-activity.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-content-extractor.php';
@@ -59,6 +63,8 @@ require_once AEOMATIC_DIR . 'includes/class-aeomatic-bulk-actions.php';
 require_once AEOMATIC_DIR . 'includes/class-aeomatic-seo-importer.php';
 require_once AEOMATIC_DIR . 'admin/class-aeomatic-admin.php';
 require_once AEOMATIC_DIR . 'admin/class-aeomatic-wizard.php';
+require_once AEOMATIC_DIR . 'admin/class-aeomatic-go-pro-nag.php';
+require_once AEOMATIC_DIR . 'admin/class-aeomatic-classic-editor-metabox.php';
 
 /**
  * Activation: set defaults, flush rewrites for /llms.txt endpoint.

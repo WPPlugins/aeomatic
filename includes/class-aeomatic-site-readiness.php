@@ -105,6 +105,10 @@ class AEOMATIC_Site_Readiness {
 
 		$categories = array( $technical, $content, $access );
 
+		// Extension filter: extensions may append categories (e.g. a GSC-data
+		// category from AEOmatic Pro). Same shape as the core categories.
+		$categories = apply_filters( 'aeomatic_site_readiness_categories', $categories );
+
 		// Unweighted mean. A weighted blend would imply we know the relative
 		// citation impact of each axis; no public evidence supports specific
 		// weights, so the honest default is equal treatment.
@@ -132,7 +136,15 @@ class AEOMATIC_Site_Readiness {
 			'cached'          => false,
 		);
 
+		// Extension filter: last chance to mutate the summary (e.g. reorder
+		// recommendations or inject Pro-only ones).
+		$payload = apply_filters( 'aeomatic_site_readiness_summary', $payload );
+
 		set_transient( self::CACHE_KEY, $payload, self::CACHE_TTL );
+
+		// Extension action: fires whenever a fresh audit is computed. Consumers
+		// like scheduled-audits and trend-charts persist the snapshot from here.
+		do_action( 'aeomatic_site_readiness_computed', $payload );
 
 		return $payload;
 	}

@@ -57,22 +57,23 @@ class AEOMATIC_Blocks {
 	}
 
 	public function enqueue_editor_assets(): void {
-		// Audit sidebar panel.
-		$asset_file = AEOMATIC_DIR . 'assets/js/editor-sidebar.asset.php';
-		$deps       = array( 'wp-plugins', 'wp-edit-post', 'wp-element', 'wp-components', 'wp-data', 'wp-i18n', 'wp-api-fetch' );
-		$ver        = AEOMATIC_VERSION;
+		// Shared panels module — same file Classic Editor loads. Must enqueue
+		// before the sidebar shell since the shell consumes window.AeomaticPanels.
+		wp_enqueue_script(
+			'aeomatic-panels',
+			AEOMATIC_URL . 'assets/js/aeomatic-panels.js',
+			array( 'wp-element', 'wp-components', 'wp-data', 'wp-i18n', 'wp-api-fetch' ),
+			AEOMATIC_VERSION,
+			true
+		);
+		wp_set_script_translations( 'aeomatic-panels', 'aeomatic' );
 
-		if ( file_exists( $asset_file ) ) {
-			$asset = include $asset_file;
-			$deps  = $asset['dependencies'] ?? $deps;
-			$ver   = $asset['version'] ?? $ver;
-		}
-
+		// Gutenberg PluginSidebar shell.
 		wp_enqueue_script(
 			'aeob-editor-sidebar',
 			AEOMATIC_URL . 'assets/js/editor-sidebar.js',
-			$deps,
-			$ver,
+			array( 'aeomatic-panels', 'wp-plugins', 'wp-edit-post' ),
+			AEOMATIC_VERSION,
 			true
 		);
 		wp_set_script_translations( 'aeob-editor-sidebar', 'aeomatic' );

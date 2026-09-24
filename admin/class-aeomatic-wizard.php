@@ -36,26 +36,26 @@ class AEOMATIC_Wizard {
 	}
 
 	/**
-	 * Attach a hidden admin page for the wizard. Not exposed in the sidebar;
-	 * accessed via ?page=aeomatic-wizard.
+	 * Register the wizard as a visible submenu under AEOmatic.
+	 *
+	 * Previous versions added it as a submenu and then called
+	 * remove_submenu_page() to hide it, keeping it reachable by URL only.
+	 * That pattern broke on WordPress 6.5+ (and WordPress Playground): the
+	 * remove call also removes the entry from $submenu, which admin.php
+	 * walks to resolve the page's parent, so ?page=aeomatic-wizard started
+	 * returning "Sorry, you are not allowed to access this page." Registering
+	 * as a visible submenu is the least-clever fix and also lets users
+	 * re-run onboarding any time from the sidebar.
 	 */
 	public function register_page(): void {
-		// Registered under the plugin's own menu and then hidden, rather than
-		// with a null parent. A null parent leaves WordPress unable to resolve
-		// $title for the screen, which shows up as a strip_tags(null)
-		// deprecation from wp-admin/admin-header.php on every load under
-		// PHP 8.1+ (and leaves the browser tab title empty).
 		add_submenu_page(
 			AEOMATIC_Admin::MENU_SLUG,
 			__( 'AEOmatic Setup', 'aeomatic' ),
-			__( 'AEOmatic Setup', 'aeomatic' ),
+			__( 'Setup wizard', 'aeomatic' ),
 			'manage_options',
 			self::SLUG,
 			array( $this, 'render' )
 		);
-
-		// Keep it reachable by URL but out of the sidebar.
-		remove_submenu_page( AEOMATIC_Admin::MENU_SLUG, self::SLUG );
 	}
 
 	/**

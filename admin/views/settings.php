@@ -431,6 +431,15 @@ settings_errors( 'aeomatic_messages' );
 			</tr>
 		</table>
 
+		<?php
+		/**
+		 * Extension hook: Pro modules append their own settings sections here
+		 * so they save through the same nonce-protected form as core settings.
+		 * Payload is the current settings array, read-only.
+		 */
+		do_action( 'aeomatic_settings_form_extra', $aeomatic_settings );
+		?>
+
 		<p class="submit">
 			<button type="submit" name="aeomatic_save" value="1" class="button button-primary">
 				<?php esc_html_e( 'Save settings', 'aeomatic' ); ?>

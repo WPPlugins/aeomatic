@@ -135,8 +135,10 @@ class AEOMATIC_Audit {
 		) );
 
 		// Live schema preview — returns the actual JSON-LD that will be emitted.
+		// GET returns the saved-state preview; POST accepts an in-flight `values`
+		// map from the editor so the panel reflects unsaved edits in real time.
 		register_rest_route( self::REST_NS, '/schema/(?P<id>\d+)/preview', array(
-			'methods'             => 'GET',
+			'methods'             => array( 'GET', 'POST' ),
 			'callback'            => array( $this, 'rest_schema_preview' ),
 			'permission_callback' => function ( $request ) {
 				return current_user_can( 'edit_post', (int) $request['id'] );
@@ -270,8 +272,14 @@ class AEOMATIC_Audit {
 	}
 
 	/**
-	 * Live schema preview — returns the actual JSON-LD blocks for this post.
-	 * Forces a fresh build so the user sees up-to-the-second output.
+	 * Live schema preview — returns the JSON-LD blocks the front-end would emit.
+	 *
+	 * On POST, `values` in the body are treated as in-flight editor overrides
+	 * so the preview reflects unsaved edits in real time. On GET, the currently
+	 * saved overrides are used. Both paths go through Schema_Generator so the
+	 * preview and the actual front-end render come from the same code — the
+	 * previous Schema_Builder call path bypassed user overrides entirely, which
+	 * is why the preview did not reflect edits even after save.
 	 */
 	public function rest_schema_preview( WP_REST_Request $request ) {
 		$post = get_post( (int) $request['id'] );
@@ -279,8 +287,18 @@ class AEOMATIC_Audit {
 			return new WP_Error( 'not_found', __( 'Post not found', 'aeomatic' ), array( 'status' => 404 ) );
 		}
 
-		// Invalidate cache so we build fresh from current content.
+		// Invalidate cache so downstream callers see fresh content.
 		AEOMATIC_Schema_Builder::invalidate( $post->ID );
+
+		// Optional in-flight overrides from the editor. When null, generate()
+		// falls back to reading saved post meta.
+		$in_flight = null;
+		if ( 'POST' === $request->get_method() ) {
+			$body = $request->get_json_params();
+			if ( is_array( $body ) && isset( $body['values'] ) && is_array( $body['values'] ) ) {
+				$in_flight = $body['values'];
+			}
+		}
 
 		$analysis = AEOMATIC_Schema_Analyzer::analyze( $post );
 		$type     = $analysis['type'];
@@ -289,12 +307,12 @@ class AEOMATIC_Audit {
 		$blocks = array();
 
 		if ( 'Product' === $type ) {
-			$product = AEOMATIC_WooCommerce::product_schema( $post );
-			if ( $product ) {
-				$blocks[] = $product;
+			$built = AEOMATIC_Schema_Generator::generate( $post, 'Product', $settings, $in_flight );
+			if ( $built ) {
+				$blocks[] = $built;
 			}
 		} elseif ( ! empty( $settings['article'] ) ) {
-			$built = AEOMATIC_Schema_Builder::build( $post, $type, $settings, true );
+			$built = AEOMATIC_Schema_Generator::generate( $post, $type, $settings, $in_flight );
 			if ( $built ) {
 				$blocks[] = $built;
 			}

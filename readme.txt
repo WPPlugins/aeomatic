@@ -4,7 +4,7 @@ Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.2.1
+Stable tag: 1.2.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -201,6 +201,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.2 =
+New tab layout for the visual editor, and Classic Editor users now get the full editor as a metabox. Fixes the JSON-LD preview not updating in real time, and the setup wizard "not allowed to access" error on WordPress 6.5+ / Playground.
+
 = 1.2.1 =
 Cosmetic but worth having: JSON-LD is now pretty-printed and no longer escapes ampersands, slashes and accented characters. Purely an output-formatting change — the schema itself is unchanged.
 
@@ -214,6 +217,13 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.2 =
+
+* **New: visual editor now uses a tab layout** — Schema, Audit, Gaps, Readiness, Entities, Ask AI. Same layout in the Gutenberg sidebar and the Classic Editor metabox.
+* **New: Classic Editor gets the full visual editor** as a metabox below the content area.
+* **Fix: JSON-LD preview updates in real time** — was showing the last-saved state.
+* **Fix: setup wizard "not allowed to access" error** on WordPress 6.5+ / Playground. Now a visible submenu under AEOmatic → Setup wizard.
 
 = 1.2.1 =
 

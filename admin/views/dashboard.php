@@ -76,6 +76,8 @@ $aeomatic_band = static function ( $score ): string {
 		</p>
 	</div>
 
+	<?php do_action( 'aeomatic_dashboard_after_score', $aeomatic_readiness ); ?>
+
 	<div class="aeob-grid aeob-grid--3">
 		<?php foreach ( $aeomatic_readiness['categories'] as $aeomatic_category ) : ?>
 			<div class="aeob-card">
@@ -147,6 +149,8 @@ $aeomatic_band = static function ( $score ): string {
 			</a>
 		</p>
 	</div>
+
+	<?php do_action( 'aeomatic_dashboard_after_recommendations', $aeomatic_readiness ); ?>
 
 	<div class="aeob-card">
 		<h2><?php esc_html_e( 'AI crawler activity', 'aeomatic' ); ?></h2>
@@ -228,4 +232,6 @@ $aeomatic_band = static function ( $score ): string {
 			</tbody>
 		</table>
 	</div>
+
+	<?php do_action( 'aeomatic_dashboard_end', $aeomatic_readiness ); ?>
 </div>

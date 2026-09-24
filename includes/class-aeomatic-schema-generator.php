@@ -23,20 +23,30 @@ class AEOMATIC_Schema_Generator {
 	/**
 	 * Build the complete JSON-LD array for a post.
 	 *
-	 * @param WP_Post $post
-	 * @param string  $type      Schema @type chosen by analyzer or user.
-	 * @param array   $settings  Plugin schema settings.
+	 * When $in_flight_overrides is null (default), overrides are read from the
+	 * saved post-meta record — this is the front-end render path. When it is
+	 * an array, those values are used INSTEAD of the saved ones — this is the
+	 * editor live-preview path, so the panel reflects unsaved edits.
+	 *
+	 * @param WP_Post           $post
+	 * @param string            $type                 Schema @type chosen by analyzer or user.
+	 * @param array             $settings             Plugin schema settings.
+	 * @param array<string,mixed>|null $in_flight_overrides  Preview-only override map.
 	 * @return array  JSON-LD object ready for wp_json_encode().
 	 */
-	public static function generate( WP_Post $post, string $type, array $settings ): array {
+	public static function generate( WP_Post $post, string $type, array $settings, ?array $in_flight_overrides = null ): array {
 		// 1. Get auto-extracted defaults.
 		$defaults = AEOMATIC_Schema_Fields::extract_defaults( $post, $type, $settings );
 
-		// 2. Merge user overrides on top.
-		$raw_overrides = get_post_meta( $post->ID, self::META_OVERRIDES, true );
-		$overrides     = is_string( $raw_overrides ) ? json_decode( $raw_overrides, true ) : array();
-		if ( ! is_array( $overrides ) ) {
-			$overrides = array();
+		// 2. Choose the override source: in-flight (preview) or saved (front-end).
+		if ( null !== $in_flight_overrides ) {
+			$overrides = $in_flight_overrides;
+		} else {
+			$raw_overrides = get_post_meta( $post->ID, self::META_OVERRIDES, true );
+			$overrides     = is_string( $raw_overrides ) ? json_decode( $raw_overrides, true ) : array();
+			if ( ! is_array( $overrides ) ) {
+				$overrides = array();
+			}
 		}
 
 		// Key-level merge: override only keys the user has explicitly set.
@@ -46,6 +56,16 @@ class AEOMATIC_Schema_Generator {
 
 		// 3. Assemble into a schema.org JSON-LD object.
 		return self::assemble( $post, $type, $settings, $merged );
+	}
+
+	/**
+	 * Editor live preview: build JSON-LD using unsaved in-flight values.
+	 *
+	 * Thin wrapper around generate() with a clearer name so the preview REST
+	 * handler expresses its intent without a magic null argument.
+	 */
+	public static function preview( WP_Post $post, string $type, array $settings, array $in_flight_values ): array {
+		return self::generate( $post, $type, $settings, $in_flight_values );
 	}
 
 	/**

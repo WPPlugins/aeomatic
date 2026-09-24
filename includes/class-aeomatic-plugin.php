@@ -53,7 +53,14 @@ class AEOMATIC_Plugin {
 			( new AEOMATIC_Dashboard_Widget() )->register();
 			( new AEOMATIC_Bulk_Actions() )->register();
 			( new AEOMATIC_Wizard() )->register();
+			( new AEOMATIC_Classic_Editor_Metabox() )->register();
+			// AEOMATIC_Go_Pro_Nag: registered when the Pro plugin launches.
+			// Class file kept in admin/ so the switch-back is one line.
 		}
+
+		// Extension boot signal. Fires once, after every core module has
+		// registered its hooks, so extensions can attach without racing.
+		do_action( 'aeomatic_plugin_modules_loaded' );
 	}
 
 	/**

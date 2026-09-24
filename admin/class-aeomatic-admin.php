@@ -30,13 +30,22 @@ class AEOMATIC_Admin {
 	}
 
 	public function add_menu(): void {
+		/**
+		 * Brand label filter — AEOmatic Pro's white-label module rewrites the
+		 * menu title so an agency can ship the plugin under their own name.
+		 * Two-arg to allow the filter to distinguish menu label from page title.
+		 */
+		$brand_menu = apply_filters( 'aeomatic_brand_label', __( 'AEOmatic', 'aeomatic' ), 'menu' );
+		$brand_page = apply_filters( 'aeomatic_brand_label', __( 'AEOmatic — AI SEO & Schema for AI Search', 'aeomatic' ), 'page_title' );
+		$brand_icon = apply_filters( 'aeomatic_brand_icon', 'dashicons-chart-line' );
+
 		add_menu_page(
-			__( 'AEOmatic — AI SEO & Schema for AI Search', 'aeomatic' ),
-			__( 'AEOmatic', 'aeomatic' ),
+			$brand_page,
+			$brand_menu,
 			'manage_options',
 			self::MENU_SLUG,
 			array( $this, 'render_dashboard' ),
-			'dashicons-chart-line',
+			$brand_icon,
 			58
 		);
 
@@ -93,6 +102,10 @@ class AEOMATIC_Admin {
 			self::SLUG_SETTINGS,
 			array( $this, 'render_settings' )
 		);
+
+		// Extension hook: let AEOmatic Pro register its own submenus (License,
+		// scheduled audits, etc.) under the same top-level menu.
+		do_action( 'aeomatic_admin_submenus', self::MENU_SLUG );
 	}
 
 	public function plugin_links( array $links ): array {

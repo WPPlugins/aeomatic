@@ -121,7 +121,7 @@ $crawler_groups = array(
 <div class="aeom-wiz">
 	<aside class="aeom-wiz__rail">
 		<div class="aeom-wiz__brand">
-			<img src="<?php echo esc_url( AEOMATIC_URL . 'assets/images/icon.svg' ); ?>" alt="">
+			<img src="<?php echo esc_url( AEOMATIC_URL . 'assets/images/logo.png' ); ?>" alt="AEOmatic">
 			<span><?php esc_html_e( 'AEOmatic Setup', 'aeomatic' ); ?></span>
 		</div>
 		<div class="aeom-wiz__progress" aria-hidden="true"><span style="width:<?php echo esc_attr( $progress_pct ); ?>%;"></span></div>
