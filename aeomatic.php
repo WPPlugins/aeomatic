@@ -3,7 +3,7 @@
  * Plugin Name:       AEOmatic — AEO, AI SEO, llms.txt & Schema
  * Plugin URI:        https://wordpress.org/plugins/aeomatic/
  * Description:       AI search engines cannot cite what they cannot parse. Publishes JSON-LD structured data across 22 schema types with a visual field editor, an llms.txt index and per-bot robots.txt rules; scores how extractable your content is; and logs which AI crawlers hit your site and what HTTP status you served them. Reads content from Gutenberg, Elementor, Divi, Beaver Builder, Bricks, Oxygen, WPBakery and ACF. Runs beside your existing SEO plugin.
- * Version:           1.2.2
+ * Version:           1.2.3
  * Requires at least: 6.4
  * Requires PHP:      8.0
  * Author:            mmtushar
@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AEOMATIC_VERSION', '1.2.2' );
+define( 'AEOMATIC_VERSION', '1.2.3' );
 // Extension API contract — bumped only on breaking changes to hooks/classes
 // consumed by extensions (currently AEOmatic Pro). Independent of AEOMATIC_VERSION.
 define( 'AEOMATIC_API_VERSION', '1.0.0' );
@@ -65,6 +65,7 @@ require_once AEOMATIC_DIR . 'admin/class-aeomatic-admin.php';
 require_once AEOMATIC_DIR . 'admin/class-aeomatic-wizard.php';
 require_once AEOMATIC_DIR . 'admin/class-aeomatic-go-pro-nag.php';
 require_once AEOMATIC_DIR . 'admin/class-aeomatic-classic-editor-metabox.php';
+require_once AEOMATIC_DIR . 'includes/class-aeomatic-builder-integration.php';
 
 /**
  * Activation: set defaults, flush rewrites for /llms.txt endpoint.

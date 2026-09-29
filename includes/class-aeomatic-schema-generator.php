@@ -42,11 +42,7 @@ class AEOMATIC_Schema_Generator {
 		if ( null !== $in_flight_overrides ) {
 			$overrides = $in_flight_overrides;
 		} else {
-			$raw_overrides = get_post_meta( $post->ID, self::META_OVERRIDES, true );
-			$overrides     = is_string( $raw_overrides ) ? json_decode( $raw_overrides, true ) : array();
-			if ( ! is_array( $overrides ) ) {
-				$overrides = array();
-			}
+			$overrides = self::read_overrides( $post->ID, $type );
 		}
 
 		// Key-level merge: override only keys the user has explicitly set.
@@ -71,13 +67,28 @@ class AEOMATIC_Schema_Generator {
 	/**
 	 * Save user-supplied field values as overrides for a post.
 	 *
-	 * @param int    $post_id
-	 * @param array  $fields   Flat key→value map from the editor form.
+	 * $fields holds only the keys the user edited. When $type is given, the
+	 * saved overrides for that type's fields are replaced wholesale (so a key
+	 * the user reset or cleared is dropped) while overrides for fields of other
+	 * types are kept, so switching type and back does not lose earlier edits.
+	 * An empty value means "use the auto-detected value" and is not stored.
+	 *
+	 * @param int         $post_id
+	 * @param array       $fields   Flat key→value map from the editor form.
+	 * @param string|null $type     Schema @type the fields belong to.
 	 * @return bool
 	 */
-	public static function save_overrides( int $post_id, array $fields ): bool {
-		$sanitised = self::sanitise_overrides( $fields );
-		$ok = update_post_meta( $post_id, self::META_OVERRIDES, wp_json_encode( $sanitised ) );
+	public static function save_overrides( int $post_id, array $fields, ?string $type = null ): bool {
+		$sanitised = array_filter( self::sanitise_overrides( $fields ), static function ( $v ) {
+			return $v !== null && $v !== '' && $v !== array();
+		} );
+
+		$kept = array();
+		if ( null !== $type ) {
+			$kept = array_diff_key( self::read_overrides( $post_id, $type ), array_flip( self::field_keys( $type ) ) );
+		}
+
+		$ok = update_post_meta( $post_id, self::META_OVERRIDES, wp_json_encode( array_merge( $kept, $sanitised ) ) );
 
 		// Bust all schema caches for this post so next render uses new values.
 		AEOMATIC_Schema_Builder::invalidate( $post_id );
@@ -96,15 +107,14 @@ class AEOMATIC_Schema_Generator {
 	 * @return array<string,mixed>
 	 */
 	public static function get_editor_values( WP_Post $post, string $type, array $settings ): array {
-		$defaults  = AEOMATIC_Schema_Fields::extract_defaults( $post, $type, $settings );
-		$raw       = get_post_meta( $post->ID, self::META_OVERRIDES, true );
-		$overrides = is_string( $raw ) ? json_decode( $raw, true ) : array();
-		if ( ! is_array( $overrides ) ) {
-			$overrides = array();
-		}
-		// Only merge override keys that exist in this type's field set.
-		$field_keys = array_column( AEOMATIC_Schema_Fields::for_type( $type ), 'key' );
-		$relevant   = array_intersect_key( $overrides, array_flip( $field_keys ) );
+		$defaults = AEOMATIC_Schema_Fields::extract_defaults( $post, $type, $settings );
+		// Only merge override keys that exist in this type's field set, and
+		// never let an empty override blank out an auto-detected value —
+		// generate() ignores empty overrides, so the editor must too.
+		$relevant = array_filter(
+			array_intersect_key( self::read_overrides( $post->ID, $type ), array_flip( self::field_keys( $type ) ) ),
+			static fn( $v ) => $v !== null && $v !== '' && $v !== array()
+		);
 		return array_merge( $defaults, $relevant );
 	}
 
@@ -112,18 +122,64 @@ class AEOMATIC_Schema_Generator {
 	 * Which field values are currently overridden (user-edited) vs auto-extracted?
 	 * Used to show the "Edited" badge in the UI.
 	 *
+	 * @param int         $post_id
+	 * @param string|null $type  When given, only keys belonging to this type's fields.
 	 * @return string[]  Keys that have been user-overridden.
 	 */
-	public static function get_overridden_keys( int $post_id ): array {
-		$raw = get_post_meta( $post_id, self::META_OVERRIDES, true );
-		if ( ! $raw ) {
-			return array();
+	public static function get_overridden_keys( int $post_id, ?string $type = null ): array {
+		$overrides = array_filter(
+			self::read_overrides( $post_id, $type ),
+			static fn( $v ) => $v !== null && $v !== '' && $v !== array()
+		);
+		if ( null !== $type ) {
+			$overrides = array_intersect_key( $overrides, array_flip( self::field_keys( $type ) ) );
 		}
-		$overrides = json_decode( $raw, true );
+		return array_keys( $overrides );
+	}
+
+	/**
+	 * Read the saved override map for a post.
+	 *
+	 * Before 1.2.3 override keys went through sanitize_key(), which lowercased
+	 * them (aggregateRating_value was stored as aggregaterating_value), so the
+	 * editor never found them again. When $type is given, such legacy keys are
+	 * mapped back onto that type's field keys so values saved by older
+	 * versions reappear instead of reading as blank.
+	 *
+	 * @return array<string,mixed>
+	 */
+	private static function read_overrides( int $post_id, ?string $type = null ): array {
+		$raw       = get_post_meta( $post_id, self::META_OVERRIDES, true );
+		$overrides = is_string( $raw ) && '' !== $raw ? json_decode( $raw, true ) : array();
 		if ( ! is_array( $overrides ) ) {
 			return array();
 		}
-		return array_keys( array_filter( $overrides, static fn( $v ) => $v !== null && $v !== '' ) );
+		if ( null === $type ) {
+			return $overrides;
+		}
+
+		$canonical = array();
+		foreach ( self::field_keys( $type ) as $field_key ) {
+			$canonical[ strtolower( $field_key ) ] = $field_key;
+		}
+		foreach ( $overrides as $key => $value ) {
+			$key   = (string) $key;
+			$fixed = $canonical[ strtolower( $key ) ] ?? null;
+			// Rename only when the correctly-cased key is not already present,
+			// so a newer save always wins over a stale legacy one.
+			if ( null !== $fixed && $fixed !== $key ) {
+				unset( $overrides[ $key ] );
+				if ( ! array_key_exists( $fixed, $overrides ) ) {
+					$overrides[ $fixed ] = $value;
+				}
+			}
+		}
+		return $overrides;
+	}
+
+	/** @return string[] Field keys defined for a schema @type. */
+	private static function field_keys( string $type ): array {
+		return array_column( AEOMATIC_Schema_Fields::for_type( $type ), 'key' );
 	}
 
 	/**
@@ -136,12 +192,14 @@ class AEOMATIC_Schema_Generator {
 		if ( null === $key ) {
 			delete_post_meta( $post_id, self::META_OVERRIDES );
 		} else {
-			$raw       = get_post_meta( $post_id, self::META_OVERRIDES, true );
-			$overrides = is_string( $raw ) ? json_decode( $raw, true ) : array();
-			if ( is_array( $overrides ) ) {
-				unset( $overrides[ $key ] );
-				update_post_meta( $post_id, self::META_OVERRIDES, wp_json_encode( $overrides ) );
+			$overrides = self::read_overrides( $post_id );
+			// Case-insensitive, so a legacy lowercased copy of the key goes too.
+			foreach ( array_keys( $overrides ) as $saved_key ) {
+				if ( 0 === strcasecmp( (string) $saved_key, $key ) ) {
+					unset( $overrides[ $saved_key ] );
+				}
 			}
+			update_post_meta( $post_id, self::META_OVERRIDES, wp_json_encode( $overrides ) );
 		}
 		AEOMATIC_Schema_Builder::invalidate( $post_id );
 		AEOMATIC_Schema_Analyzer::invalidate_cache( $post_id );
@@ -440,11 +498,13 @@ class AEOMATIC_Schema_Generator {
 				}
 				$rating_val = self::val( $v, 'aggregateRating_value' );
 				$rating_cnt = self::val( $v, 'aggregateRating_count' );
-				if ( $rating_val ) {
+				// Both are required — Google rejects an AggregateRating with no
+				// count, and inventing a count of 1 would misreport the reviews.
+				if ( $rating_val && $rating_cnt ) {
 					$schema['aggregateRating'] = array(
 						'@type'       => 'AggregateRating',
 						'ratingValue' => (float) $rating_val,
-						'reviewCount' => (int) ( $rating_cnt ?: 1 ),
+						'reviewCount' => (int) $rating_cnt,
 						'bestRating'  => 5,
 						'worstRating' => 1,
 					);
@@ -508,19 +568,43 @@ class AEOMATIC_Schema_Generator {
 	private static function sanitise_overrides( array $fields ): array {
 		$clean = array();
 		foreach ( $fields as $key => $value ) {
-			$key = sanitize_key( (string) $key );
+			// Whitelist [A-Za-z0-9_-] but preserve case. sanitize_key() would
+			// lowercase camelCase keys (aggregateRating_value → aggregaterating_value)
+			// so 41 of the 93 field keys were being saved under a name the
+			// editor never asks for on reload — every camelCase field
+			// (aggregateRating, itemReviewed, datePublished, recipeYield, …)
+			// went blank after save. Casing is significant here because it
+			// matches the field definitions in AEOMATIC_Schema_Fields.
+			$key = (string) preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $key );
 			if ( '' === $key ) {
 				continue;
 			}
 			if ( is_array( $value ) ) {
-				// Repeater fields: array of strings.
-				$clean[ $key ] = array_values( array_filter(
-					array_map( 'sanitize_textarea_field', array_map( 'strval', $value ) )
-				) );
+				// Repeater fields: array of strings. FAQ pairs are an array of
+				// {q, a} objects — strval() on those stored the word "Array".
+				$items = array();
+				foreach ( $value as $item ) {
+					if ( is_array( $item ) ) {
+						$q = sanitize_textarea_field( (string) ( $item['q'] ?? '' ) );
+						$a = sanitize_textarea_field( (string) ( $item['a'] ?? '' ) );
+						if ( '' !== $q || '' !== $a ) {
+							$items[] = array( 'q' => $q, 'a' => $a );
+						}
+					} elseif ( is_scalar( $item ) ) {
+						$item = sanitize_textarea_field( (string) $item );
+						if ( '' !== $item ) {
+							$items[] = $item;
+						}
+					}
+				}
+				$clean[ $key ] = $items;
 			} elseif ( is_bool( $value ) ) {
 				$clean[ $key ] = $value;
-			} elseif ( is_numeric( $value ) ) {
-				$clean[ $key ] = $value + 0; // preserve int vs float
+			} elseif ( is_int( $value ) || is_float( $value ) ) {
+				// Real JSON numbers only. Numeric *strings* stay strings: casting
+				// them dropped leading zeros and "+" from postcodes, SKUs, ISBNs
+				// and phone numbers. assemble() casts the numeric properties.
+				$clean[ $key ] = $value;
 			} else {
 				// String — sanitise based on key name hints.
 				$v = (string) $value;

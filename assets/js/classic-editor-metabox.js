@@ -15,19 +15,16 @@
 	const container = document.getElementById( 'aeomatic-classic-metabox-root' );
 	if ( ! container ) return;
 
-	const { createElement: el, render } = wp.element;
-	const { TabbedEditor } = window.AeomaticPanels;
+	const { createElement: el } = wp.element;
+	const { TabbedEditor, mountInto } = window.AeomaticPanels;
 
 	// Classic has no reactive "is saving post" store. Passing undefined tells
 	// the panels to skip the post-save refetch effect entirely — each panel's
 	// own Refresh / Re-run button is the manual equivalent.
-	render(
-		el( TabbedEditor, {
-			postId:       cfg.postId,
-			isSavingPost: undefined,
-			initialTitle: cfg.postTitle || '',
-		} ),
-		container
-	);
+	mountInto( container, el( TabbedEditor, {
+		postId:       cfg.postId,
+		isSavingPost: undefined,
+		initialTitle: cfg.postTitle || '',
+	} ) );
 
 } )( window.wp );

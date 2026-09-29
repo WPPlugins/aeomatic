@@ -22,6 +22,47 @@
 
 	const REST = '/aeomatic/v1';
 
+	// ── Shared styles ────────────────────────────────────────────────────
+	// Injected once from here so every host (Gutenberg, Classic, page
+	// builders) gets them without a separate stylesheet enqueue per context.
+	( function injectStyles() {
+		if ( document.getElementById( 'aeob-panels-css' ) ) return;
+		const css = `
+			/* Six tabs do not fit a narrow column: wrap instead of clipping. */
+			.aeob-tabs .components-tab-panel__tabs { flex-wrap: wrap; }
+			.aeob-tabs .components-tab-panel__tabs-item { flex: 0 0 auto; padding-left: 12px; padding-right: 12px; }
+			/* Gutenberg: widen only the AEOmatic sidebar. Core fixes every
+			   sidebar at 280px with an inline style on two wrappers, and
+			   PluginSidebar does not pass className through (WP 7.1), so match
+			   on our own root element instead. */
+			@media (min-width: 782px) {
+				.interface-complementary-area__fill:has(.aeob-sidebar-root),
+				.interface-complementary-area:has(.aeob-sidebar-root) { width: 400px !important; }
+			}
+			.aeob-expanded-modal { width: min(820px, calc(100vw - 32px)); }
+			.aeob-expanded-modal .components-modal__content { padding-top: 8px; }
+		`;
+		const style = document.createElement( 'style' );
+		style.id = 'aeob-panels-css';
+		style.textContent = css;
+		( document.head || document.documentElement ).appendChild( style );
+	} )();
+
+	/**
+	 * Mount a React element into a DOM node and return an unmount function.
+	 * Uses createRoot where available (WordPress 6.2+); falls back to the
+	 * legacy render() API, which React 19 removes.
+	 */
+	function mountInto( node, element ) {
+		if ( typeof wp.element.createRoot === 'function' ) {
+			const root = wp.element.createRoot( node );
+			root.render( element );
+			return () => root.unmount();
+		}
+		wp.element.render( element, node );
+		return () => wp.element.unmountComponentAtNode( node );
+	}
+
 	// ── Colour helpers ────────────────────────────────────────────────────
 	const confColor  = c => c >= 75 ? '#1d9e75' : c >= 50 ? '#ba7517' : '#a32d2d';
 	const scoreColor = s => s >= 70 ? '#1d9e75' : s >= 40 ? '#ba7517' : '#a32d2d';
@@ -86,7 +127,12 @@
 				onChange, hideLabelFromVision: true, label: field.label,
 			} );
 		} else if ( field.type === 'select' && field.options ) {
-			const options = Object.entries( field.options ).map( ( [v, l] ) => ( { value: v, label: l } ) );
+			// Leading empty option: without it an unset value ('') made the
+			// browser display the first real option, so the dropdown showed a
+			// choice that was not saved, and picking that option fired no change.
+			const options = [ { value: '', label: __( '— Select —', 'aeomatic' ) } ].concat(
+				Object.entries( field.options ).map( ( [v, l] ) => ( { value: v, label: l } ) )
+			);
 			input = el( SelectControl, {
 				id, value: stringVal, options, onChange,
 				hideLabelFromVision: true, label: field.label,
@@ -215,10 +261,18 @@
 
 		const handleSave = () => {
 			setSaving( true ); setError( null );
+			// Send only the fields the user edited. Sending every value froze
+			// the auto-detected ones (date modified, WooCommerce price, rating…)
+			// as overrides, so they stopped updating and all read as "Edited".
+			const fields = {};
+			overridden.forEach( key => { if ( key in values ) fields[ key ] = values[ key ]; } );
 			apiFetch( { path: `${REST}/schema/${postId}/fields`, method: 'POST',
-				data: { fields: values } } )
+				data: { fields } } )
 				.then( () => {
 					setSaving( false ); setSaved( true );
+					// Reload so the form shows exactly what was stored — a cleared
+					// field falls back to its auto-detected value.
+					load();
 					setTimeout( () => setSaved( false ), 2000 );
 					if ( showJson ) buildPreview();
 				} )
@@ -226,6 +280,10 @@
 		};
 
 		const handleTypeChange = ( newType ) => {
+			// Optimistic update: reflect the selection in the dropdown before the
+			// server round-trip completes. Without this the SelectControl keeps
+			// showing the old value until load() finishes and looks broken.
+			setData( prev => prev ? { ...prev, type: newType, source: 'user_override' } : prev );
 			apiFetch( { path: `${REST}/schema/${postId}`, method: 'POST', data: { type: newType } } )
 				.then( () => load() )
 				.catch( e => setError( e.message ) );
@@ -737,6 +795,41 @@
 		}, renderTab );
 	};
 
+	// ── Expandable editor — tabs plus a button that opens a large modal ──
+	// Used by the Gutenberg sidebar, where even the widened column is narrow
+	// for the longer schema types. While the modal is open the column shows
+	// a placeholder instead of a second live copy, so the two cannot hold
+	// diverging unsaved edits.
+	const ExpandableEditor = ( props ) => {
+		const [ expanded, setExpanded ] = useState( false );
+		const { Modal } = wp.components;
+
+		const expandBtn = el( 'div', { style: { display: 'flex', justifyContent: 'flex-end', padding: '8px 12px 0' } },
+			el( Button, {
+				className: 'aeob-expand',
+				variant: 'secondary', isSmall: true,
+				icon: 'fullscreen-alt',
+				onClick: () => setExpanded( true ),
+			}, __( 'Expand', 'aeomatic' ) )
+		);
+
+		return el( 'div', { className: 'aeob-sidebar-root' },
+			expanded
+				? el( 'div', { style: { padding: '16px', fontSize: '12px', color: '#50575e' } },
+					el( 'p', { style: { margin: '0 0 10px' } }, __( 'AEOmatic is open in the expanded view.', 'aeomatic' ) ),
+					el( Button, { variant: 'secondary', isSmall: true, onClick: () => setExpanded( false ) },
+						__( 'Back to sidebar', 'aeomatic' ) )
+				  )
+				: el( Fragment, null, expandBtn, el( TabbedEditor, props ) ),
+			expanded && Modal && el( Modal, {
+				title: __( 'AEOmatic', 'aeomatic' ),
+				className: 'aeob-expanded-modal',
+				onRequestClose: () => setExpanded( false ),
+				shouldCloseOnClickOutside: true,
+			}, el( TabbedEditor, props ) )
+		);
+	};
+
 	window.AeomaticPanels = {
 		SchemaGeneratorPanel,
 		AuditPanel,
@@ -745,6 +838,8 @@
 		EntityScannerPanel,
 		AskAiPanel,
 		TabbedEditor,
+		ExpandableEditor,
+		mountInto,
 	};
 
 } )( window.wp );

@@ -4,7 +4,7 @@ Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.2.2
+Stable tag: 1.2.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -201,6 +201,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.3 =
+Edit schema inside Elementor, Beaver Builder, Bricks, Divi, Oxygen and WPBakery, and a wider Gutenberg sidebar. Fixes the schema type dropdown and edited fields going blank after saving.
+
 = 1.2.2 =
 New tab layout for the visual editor, and Classic Editor users now get the full editor as a metabox. Fixes the JSON-LD preview not updating in real time, and the setup wizard "not allowed to access" error on WordPress 6.5+ / Playground.
 
@@ -217,6 +220,17 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.3 =
+
+* **New: edit schema inside page builders** — Elementor, Beaver Builder, Bricks, Divi, Oxygen and WPBakery get a floating AEOmatic button that opens the full editor.
+* **Improved: wider Gutenberg sidebar** with all tabs visible, plus an Expand button for a large view.
+* **Fix: Schema type dropdown keeps your selection** — it reverted to the auto-detected type.
+* **Fix: edited schema fields no longer go blank after saving** — including Average rating, Review count, Item reviewed and dates. Values saved by earlier versions reappear.
+* **Fix: dropdown fields show "— Select —" when unset** instead of an option that was never saved.
+* **Fix: saving the Schema tab keeps unedited fields automatic**, so the modified date and WooCommerce price and rating stay up to date.
+* **Fix: FAQ Q&A pairs, postcodes, SKUs, ISBNs and phone numbers now save correctly** — FAQ pairs were stored as "Array" and leading zeros and "+" were dropped.
+* **Fix: the page now outputs the schema type you chose** straight after saving, instead of the default type.
 
 = 1.2.2 =
 

@@ -106,6 +106,22 @@ class AEOMATIC_Schema_Analyzer {
 		// No cached analysis. Only run the full algorithm in a safe context
 		// (admin, REST, cron, CLI) — never during a live frontend render.
 		if ( ! self::is_safe_analysis_context() ) {
+			// A user-chosen type is a plain meta read, safe anywhere. Without
+			// this, every save (which clears the cache) made the front end emit
+			// the post-type default instead of the chosen type until the post
+			// was next opened in the editor.
+			$override = get_post_meta( $post->ID, self::META_OVERRIDE, true );
+			if ( $override && isset( self::known_types()[ $override ] ) ) {
+				$result = array(
+					'type'         => $override,
+					'confidence'   => 100,
+					'reasons'      => array( __( 'Manually set by user.', 'aeomatic' ) ),
+					'alternatives' => array(),
+					'source'       => 'user_override',
+				);
+				self::$request_cache[ $post->ID ] = $result;
+				return $result;
+			}
 			$fallback = array(
 				'type'         => self::default_for_post_type( $post->post_type ),
 				'confidence'   => 20,
@@ -646,9 +662,15 @@ class AEOMATIC_Schema_Analyzer {
 
 	/**
 	 * Save user override.
+	 *
+	 * Clears both the analyzer's persisted analysis cache and the schema
+	 * builder cache. Without the analyzer invalidation the next analyze()
+	 * call returns the pre-override result from META_ANALYSIS, which is
+	 * why the editor's Schema-type dropdown appeared not to accept the
+	 * user's selection — the refetched value was the stale one.
 	 */
 	public static function set_override( int $post_id, string $type ): bool {
-		// Invalidate the schema builder cache when override changes.
+		self::invalidate_cache( $post_id );
 		if ( class_exists( 'AEOMATIC_Schema_Builder' ) ) {
 			AEOMATIC_Schema_Builder::invalidate( $post_id );
 		}

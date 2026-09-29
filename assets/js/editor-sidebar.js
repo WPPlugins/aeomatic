@@ -15,7 +15,7 @@
 	const { createElement: el, Fragment }              = wp.element;
 	const { useSelect }                                = wp.data;
 
-	const { TabbedEditor } = window.AeomaticPanels;
+	const { ExpandableEditor } = window.AeomaticPanels;
 
 	const Sidebar = () => {
 		const postId       = useSelect( s => s( 'core/editor' ).getCurrentPostId(), [] );
@@ -26,7 +26,7 @@
 		return el( Fragment, null,
 			el( PluginSidebarMoreMenuItem, { target: 'aeob-sidebar' }, 'AEOmatic' ),
 			el( PluginSidebar, { name: 'aeob-sidebar', title: 'AEOmatic', icon: 'chart-line' },
-				el( TabbedEditor, { postId, isSavingPost } )
+				el( ExpandableEditor, { postId, isSavingPost } )
 			)
 		);
 	};

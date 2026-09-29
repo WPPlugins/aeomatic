@@ -207,7 +207,7 @@ class AEOMATIC_Audit {
 		$settings      = (array) AEOMATIC_Settings::get( 'schema' );
 		$field_defs    = AEOMATIC_Schema_Fields::for_type( $type );
 		$values        = AEOMATIC_Schema_Generator::get_editor_values( $post, $type, $settings );
-		$overridden    = AEOMATIC_Schema_Generator::get_overridden_keys( $post->ID );
+		$overridden    = AEOMATIC_Schema_Generator::get_overridden_keys( $post->ID, $type );
 		$known         = AEOMATIC_Schema_Analyzer::known_types();
 
 		return rest_ensure_response( array(
@@ -246,7 +246,10 @@ class AEOMATIC_Audit {
 			return new WP_Error( 'bad_request', __( 'fields must be an object', 'aeomatic' ), array( 'status' => 400 ) );
 		}
 
-		$ok = AEOMATIC_Schema_Generator::save_overrides( $post->ID, $fields );
+		// Scope the save to the post's current schema type so overrides kept
+		// for other types survive, and cleared fields fall back to auto values.
+		$type = AEOMATIC_Schema_Analyzer::analyze( $post )['type'];
+		$ok   = AEOMATIC_Schema_Generator::save_overrides( $post->ID, $fields, $type );
 		return rest_ensure_response( array( 'ok' => $ok, 'post_id' => $post->ID ) );
 	}
 
@@ -260,7 +263,15 @@ class AEOMATIC_Audit {
 		}
 
 		$body = $request->get_json_params();
-		$key  = isset( $body['key'] ) ? sanitize_key( (string) $body['key'] ) : null;
+		// Case-preserving whitelist — matches how sanitise_overrides() now
+		// stores the key, so resetting an aggregateRating_value actually
+		// unsets aggregateRating_value rather than aggregaterating_value.
+		$key  = isset( $body['key'] )
+			? (string) preg_replace( '/[^A-Za-z0-9_\-]/', '', (string) $body['key'] )
+			: null;
+		if ( '' === $key ) {
+			$key = null;
+		}
 
 		AEOMATIC_Schema_Generator::reset_overrides( $post->ID, $key );
 
