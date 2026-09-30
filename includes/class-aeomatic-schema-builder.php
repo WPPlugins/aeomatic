@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AEOMATIC_Schema_Builder {
 
 	const CACHE_META = '_aeomatic_schema_cache';
-	const CACHE_VERSION = 2;
+	const CACHE_VERSION = 3;
 
 	/**
 	 * Build the primary schema for a post. Returns null if nothing meaningful
@@ -297,59 +297,6 @@ class AEOMATIC_Schema_Builder {
 			$base['recipeCategory'] = $cats[0];
 		}
 
-		return $base;
-	}
-
-	private static function build_howto( WP_Post $post, array $base, array $settings, string $text, string $html ): array {
-		$instructions = AEOMATIC_Property_Extractors::instructions( $post, $text, $html );
-		if ( $instructions ) {
-			$base['step'] = $instructions;
-		}
-		$total = AEOMATIC_Property_Extractors::duration( $text, 'total' );
-		if ( $total ) $base['totalTime'] = $total;
-		return $base;
-	}
-
-	private static function build_faqpage( WP_Post $post, array $base, array $settings, string $text, string $html ): array {
-		$extracted = AEOMATIC_Content_Extractor::extract( $post );
-		$qa        = $extracted['faqs'] ?? array();
-
-		// If no AEO FAQ blocks, derive from question-style headings.
-		if ( empty( $qa ) ) {
-			$qa = self::derive_faqs_from_headings( $html );
-		}
-
-		$base['mainEntity'] = array_map( static function ( $pair ) {
-			return array(
-				'@type'          => 'Question',
-				'name'           => $pair['q'],
-				'acceptedAnswer' => array(
-					'@type' => 'Answer',
-					'text'  => $pair['a'],
-				),
-			);
-		}, $qa );
-
-		return $base;
-	}
-
-	private static function build_qapage( WP_Post $post, array $base, array $settings, string $text, string $html ): array {
-		$extracted = AEOMATIC_Content_Extractor::extract( $post );
-		$qa = $extracted['faqs'] ?? self::derive_faqs_from_headings( $html );
-
-		if ( ! empty( $qa ) ) {
-			$first = $qa[0];
-			$base['mainEntity'] = array(
-				'@type'        => 'Question',
-				'name'         => $first['q'],
-				'text'         => $first['q'],
-				'answerCount'  => count( $qa ),
-				'acceptedAnswer' => array(
-					'@type' => 'Answer',
-					'text'  => $first['a'],
-				),
-			);
-		}
 		return $base;
 	}
 
@@ -635,30 +582,5 @@ class AEOMATIC_Schema_Builder {
 		$cleaned = trim( preg_replace( '/\s+/', ' ', $cleaned ?: '' ) );
 		$cleaned = trim( $cleaned, " \t\n\r:-—–" );
 		return $cleaned ?: null;
-	}
-
-	/**
-	 * Derive Q&A pairs from H2/H3 headings ending with "?" + the paragraph
-	 * that follows. Used as a fallback for FAQPage when no AEO FAQ blocks
-	 * are present.
-	 *
-	 * @return array<int,array{q:string,a:string}>
-	 */
-	private static function derive_faqs_from_headings( string $html ): array {
-		$out = array();
-		// Split on H2/H3 headings, capturing the heading and the content after it.
-		if ( ! preg_match_all( '/<h[2-3][^>]*>(.*?)<\/h[2-3]>(.*?)(?=<h[2-3]|$)/is', $html, $matches, PREG_SET_ORDER ) ) {
-			return $out;
-		}
-		foreach ( $matches as $m ) {
-			$q = trim( wp_strip_all_tags( $m[1] ) );
-			if ( ! str_ends_with( $q, '?' ) ) continue;
-			$a = trim( wp_strip_all_tags( $m[2] ) );
-			$a = preg_replace( '/\s+/', ' ', $a ?: '' );
-			if ( $a && strlen( $a ) >= 30 ) {
-				$out[] = array( 'q' => $q, 'a' => self::truncate( $a, 500 ) );
-			}
-		}
-		return $out;
 	}
 }

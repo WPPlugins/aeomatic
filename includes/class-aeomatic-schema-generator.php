@@ -88,7 +88,8 @@ class AEOMATIC_Schema_Generator {
 			$kept = array_diff_key( self::read_overrides( $post_id, $type ), array_flip( self::field_keys( $type ) ) );
 		}
 
-		$ok = update_post_meta( $post_id, self::META_OVERRIDES, wp_json_encode( array_merge( $kept, $sanitised ) ) );
+		// wp_slash: update_post_meta() unslashes, which would corrupt the JSON's escapes.
+		$ok = update_post_meta( $post_id, self::META_OVERRIDES, wp_slash( wp_json_encode( array_merge( $kept, $sanitised ) ) ) );
 
 		// Bust all schema caches for this post so next render uses new values.
 		AEOMATIC_Schema_Builder::invalidate( $post_id );
@@ -199,23 +200,80 @@ class AEOMATIC_Schema_Generator {
 					unset( $overrides[ $saved_key ] );
 				}
 			}
-			update_post_meta( $post_id, self::META_OVERRIDES, wp_json_encode( $overrides ) );
+			update_post_meta( $post_id, self::META_OVERRIDES, wp_slash( wp_json_encode( $overrides ) ) );
 		}
 		AEOMATIC_Schema_Builder::invalidate( $post_id );
 		AEOMATIC_Schema_Analyzer::invalidate_cache( $post_id );
 	}
 
+	// ── Graph identifiers ─────────────────────────────────────────────────
+	//
+	// Every node carries an @id so the other entities on the page can point
+	// at it. That is what turns separate JSON-LD blocks into one statement
+	// about one business: the Article's publisher, the WebSite's publisher
+	// and the Organization node all resolve to the same #organization.
+
+	public static function org_id(): string {
+		return home_url( '/#organization' );
+	}
+
+	public static function website_id(): string {
+		return home_url( '/#website' );
+	}
+
+	public static function webpage_id( WP_Post $post ): string {
+		return get_permalink( $post ) . '#webpage';
+	}
+
+	public static function person_id( int $user_id ): string {
+		return get_author_posts_url( $user_id ) . '#person';
+	}
+
+	/** Organization name from Settings, falling back to the site title. */
+	public static function org_name( array $settings ): string {
+		return ! empty( $settings['org_name'] ) ? (string) $settings['org_name'] : (string) get_bloginfo( 'name' );
+	}
+
+	/**
+	 * Inline Organization reference. Carries the site-wide @id only when it
+	 * is the site's own organization, so a user-typed third party (another
+	 * hiring company, another publisher) never merges into it.
+	 */
+	private static function org_ref( array $settings, string $name, ?string $logo = null ): array {
+		$ref = array( '@type' => 'Organization', 'name' => $name );
+		if ( ! empty( $settings['organization'] ) && $name === self::org_name( $settings ) ) {
+			$ref['@id'] = self::org_id();
+		}
+		$logo = $logo ?: ( $name === self::org_name( $settings ) ? (string) ( $settings['org_logo'] ?? '' ) : '' );
+		if ( $logo ) {
+			$ref['logo'] = array( '@type' => 'ImageObject', 'url' => $logo );
+		}
+		return $ref;
+	}
+
+	/** Types that are schema.org CreativeWorks and so take author/publisher/dates. */
+	private const CREATIVE_WORKS = array(
+		'Article', 'BlogPosting', 'NewsArticle', 'TechArticle', 'Recipe', 'Review',
+		'Course', 'Book', 'Movie', 'SoftwareApplication', 'Dataset',
+		'WebPage', 'AboutPage', 'ContactPage', 'CollectionPage', 'ProfilePage',
+	);
+
+	/** WebPage subtypes: when primary, they are the page node itself. */
+	public const PAGE_TYPES = array( 'WebPage', 'AboutPage', 'ContactPage', 'CollectionPage', 'ProfilePage' );
+
 	// ── Private: assemble flat merged values into a JSON-LD tree ──────────
 
 	private static function assemble( WP_Post $post, string $type, array $settings, array $v ): array {
+		$permalink = get_permalink( $post );
+		$is_work   = in_array( $type, self::CREATIVE_WORKS, true );
+		$is_page   = in_array( $type, self::PAGE_TYPES, true );
+
 		$schema = array(
-			'@context'      => 'https://schema.org',
-			'@type'         => $type,
-			'@id'           => get_permalink( $post ) . '#' . strtolower( $type ),
-			'name'          => self::val( $v, 'name', get_the_title( $post ) ),
-			'url'           => self::val( $v, 'url', get_permalink( $post ) ),
-			'datePublished' => self::val( $v, 'datePublished', get_the_date( 'c', $post ) ),
-			'dateModified'  => self::val( $v, 'dateModified', get_the_modified_date( 'c', $post ) ),
+			'@context' => 'https://schema.org',
+			'@type'    => $type,
+			'@id'      => $is_page ? self::webpage_id( $post ) : $permalink . '#' . strtolower( $type ),
+			'name'     => self::val( $v, 'name', wp_strip_all_tags( get_the_title( $post ) ) ),
+			'url'      => self::val( $v, 'url', $permalink ),
 		);
 
 		$desc = self::val( $v, 'description' );
@@ -228,23 +286,40 @@ class AEOMATIC_Schema_Generator {
 			$schema['image'] = $image;
 		}
 
-		// Author.
-		$author_name = self::val( $v, 'author_name' );
-		$author_url  = self::val( $v, 'author_url' );
-		if ( $author_name ) {
-			$author = array( '@type' => 'Person', 'name' => $author_name );
-			if ( $author_url ) {
-				$author['url'] = $author_url;
+		if ( $is_work ) {
+			$schema['datePublished'] = self::val( $v, 'datePublished', get_the_date( 'c', $post ) );
+			$schema['dateModified']  = self::val( $v, 'dateModified', get_the_modified_date( 'c', $post ) );
+			$schema['inLanguage']    = get_bloginfo( 'language' );
+
+			// Author — linked by @id to the page's Person node when it is the
+			// post's own WordPress author and not a name the user typed in.
+			$author_name = self::val( $v, 'author_name' );
+			if ( $author_name ) {
+				$author    = array( '@type' => 'Person', 'name' => mb_substr( (string) $author_name, 0, 100 ) );
+				$wp_author = get_userdata( (int) $post->post_author );
+				if ( $wp_author && ! empty( $settings['author'] ) && $wp_author->display_name === $author_name ) {
+					$author['@id'] = self::person_id( $wp_author->ID );
+				}
+				$author_url = self::val( $v, 'author_url' );
+				if ( $author_url ) {
+					$author['url'] = $author_url;
+				}
+				$schema['author'] = $author;
 			}
-			$schema['author'] = $author;
+
+			$schema['publisher'] = self::org_ref(
+				$settings,
+				(string) self::val( $v, 'publisher_name', self::org_name( $settings ) ),
+				self::val( $v, 'publisher_logo' )
+			);
 		}
 
-		// Publisher.
-		$pub_name = self::val( $v, 'publisher_name', get_bloginfo( 'name' ) );
-		$schema['publisher'] = array( '@type' => 'Organization', 'name' => $pub_name );
-		$pub_logo = self::val( $v, 'publisher_logo' );
-		if ( $pub_logo ) {
-			$schema['publisher']['logo'] = array( '@type' => 'ImageObject', 'url' => $pub_logo );
+		if ( $is_page ) {
+			$schema['isPartOf'] = array( '@id' => self::website_id() );
+			$keywords = self::val( $v, 'keywords' );
+			if ( $keywords ) {
+				$schema['keywords'] = $keywords;
+			}
 		}
 
 		// Type-specific assembly.
@@ -254,10 +329,28 @@ class AEOMATIC_Schema_Generator {
 			case 'BlogPosting':
 			case 'NewsArticle':
 			case 'TechArticle':
-				$schema['headline']      = self::val( $v, 'headline', self::val( $v, 'name' ) );
-				$schema['mainEntityOfPage'] = array( '@type' => 'WebPage', '@id' => self::val( $v, 'url' ) );
+				$schema['headline']         = mb_substr( (string) self::val( $v, 'headline', $schema['name'] ), 0, 110 );
+				$schema['mainEntityOfPage'] = array( '@id' => self::webpage_id( $post ) );
 				if ( self::val( $v, 'articleSection' ) )  $schema['articleSection'] = self::val( $v, 'articleSection' );
 				if ( self::val( $v, 'wordCount' ) )        $schema['wordCount']      = (int) self::val( $v, 'wordCount' );
+
+				// Gated content: a real boolean, never the string "false",
+				// which parsers read as truthy.
+				if ( false === self::bool_val( $v, 'isAccessibleForFree' ) ) {
+					$schema['isAccessibleForFree'] = false;
+					$selector = trim( (string) self::val( $v, 'paywall_selector', '' ) );
+					// Only when an element with that class is really in the
+					// content: validators flag a selector that matches nothing.
+					$html = (string) ( AEOMATIC_Content_Extractor::extract( $post )['html'] ?? '' );
+					if ( preg_match( '/^\.[A-Za-z_][A-Za-z0-9_-]*$/', $selector )
+						&& preg_match( '/\bclass=("|\')[^"\']*(?<![\w-])' . preg_quote( substr( $selector, 1 ), '/' ) . '(?![\w-])/i', $html ) ) {
+						$schema['hasPart'] = array(
+							'@type'               => 'WebPageElement',
+							'isAccessibleForFree' => false,
+							'cssSelector'         => $selector,
+						);
+					}
+				}
 				break;
 
 			case 'Recipe':
@@ -282,48 +375,19 @@ class AEOMATIC_Schema_Generator {
 				}
 				break;
 
-			case 'HowTo':
-				if ( self::val( $v, 'totalTime' ) )    $schema['totalTime'] = self::val( $v, 'totalTime' );
-				if ( self::val( $v, 'estimatedCost' ) ) $schema['estimatedCost'] = self::val( $v, 'estimatedCost' );
-				$steps = self::as_list( $v, 'step' );
-				if ( $steps ) {
-					$schema['step'] = array_map( static fn( $s, $i ) => array(
-						'@type' => 'HowToStep', 'position' => $i + 1, 'name' => $s, 'text' => $s,
-					), $steps, array_keys( $steps ) );
-				}
-				$tools = self::as_list( $v, 'tool' );
-				if ( $tools ) {
-					$schema['tool'] = array_map( static fn( $t ) => array( '@type' => 'HowToTool', 'name' => $t ), $tools );
-				}
-				$supplies = self::as_list( $v, 'supply' );
-				if ( $supplies ) {
-					$schema['supply'] = array_map( static fn( $s ) => array( '@type' => 'HowToSupply', 'name' => $s ), $supplies );
-				}
-				break;
-
-			case 'FAQPage':
-				$faq_pairs = self::val( $v, 'faq_pairs', array() );
-				if ( is_array( $faq_pairs ) && ! empty( $faq_pairs ) ) {
-					$schema['mainEntity'] = array_map( static function ( $pair ) {
-						$q = is_array( $pair ) ? ( $pair['q'] ?? '' ) : $pair;
-						$a = is_array( $pair ) ? ( $pair['a'] ?? '' ) : '';
-						return array(
-							'@type'          => 'Question',
-							'name'           => wp_strip_all_tags( $q ),
-							'acceptedAnswer' => array( '@type' => 'Answer', 'text' => wp_strip_all_tags( $a ) ),
-						);
-					}, $faq_pairs );
-				}
-				break;
-
 			case 'Review':
 				$item_name = self::val( $v, 'itemReviewed_name' );
 				$item_type = self::val( $v, 'itemReviewed_type', 'Product' );
 				if ( $item_name ) {
 					$schema['itemReviewed'] = array( '@type' => $item_type, 'name' => $item_name );
 				}
+				// Self-review rule: a business rating itself is ineligible, so
+				// no rating is claimed when the reviewed item is this site's
+				// own organization.
+				$is_self = $item_name && in_array( $item_type, array( 'Organization', 'LocalBusiness' ), true )
+					&& 0 === strcasecmp( trim( (string) $item_name ), self::org_name( $settings ) );
 				$rating_val = self::val( $v, 'reviewRating_value' );
-				if ( $rating_val !== '' && $rating_val !== null ) {
+				if ( ! $is_self && $rating_val !== '' && $rating_val !== null ) {
 					$schema['reviewRating'] = array(
 						'@type'       => 'Rating',
 						'ratingValue' => (float) $rating_val,
@@ -342,56 +406,107 @@ class AEOMATIC_Schema_Generator {
 				if ( $brand ) {
 					$schema['brand'] = array( '@type' => 'Brand', 'name' => $brand );
 				}
-				$sku = self::val( $v, 'sku' );
-				if ( $sku ) {
-					$schema['sku'] = $sku;
+				foreach ( array( 'sku', 'gtin', 'mpn', 'category' ) as $prop ) {
+					$val = self::val( $v, $prop );
+					if ( $val ) {
+						$schema[ $prop ] = $val;
+					}
 				}
+				$price = self::val( $v, 'offer_price' );
+				if ( $price !== '' && $price !== null ) {
+					$offer = array(
+						'@type'         => 'Offer',
+						'price'         => (string) $price,
+						'priceCurrency' => self::val( $v, 'offer_currency', 'USD' ),
+						'availability'  => 'https://schema.org/' . self::val( $v, 'offer_availability', 'InStock' ),
+						'url'           => self::val( $v, 'offer_url', $permalink ),
+					);
+					$condition = self::val( $v, 'offer_itemCondition' );
+					if ( $condition ) {
+						$offer['itemCondition'] = 'https://schema.org/' . $condition;
+					}
+					$valid_until = self::val( $v, 'offer_priceValidUntil' );
+					if ( $valid_until ) {
+						$offer['priceValidUntil'] = $valid_until;
+					}
+					$schema['offers'] = $offer;
+				}
+				$rating = self::aggregate_rating( $v );
+				if ( $rating ) {
+					$schema['aggregateRating'] = $rating;
+				}
+				break;
+
+			case 'SoftwareApplication':
+				foreach ( array( 'applicationCategory', 'operatingSystem', 'softwareVersion', 'downloadUrl' ) as $prop ) {
+					$val = self::val( $v, $prop );
+					if ( $val ) {
+						$schema[ $prop ] = $val;
+					}
+				}
+				$features = self::as_list( $v, 'featureList' );
+				if ( $features ) {
+					$schema['featureList'] = $features;
+				}
+				// Required. "0" is a real price for a free app, so only an
+				// empty value is treated as missing.
 				$price = self::val( $v, 'offer_price' );
 				if ( $price !== '' && $price !== null ) {
 					$schema['offers'] = array(
 						'@type'         => 'Offer',
 						'price'         => (string) $price,
 						'priceCurrency' => self::val( $v, 'offer_currency', 'USD' ),
-						'availability'  => 'https://schema.org/' . self::val( $v, 'offer_availability', 'InStock' ),
 					);
 				}
-				$rating_val = self::val( $v, 'aggregateRating_value' );
-				$rating_cnt = self::val( $v, 'aggregateRating_count' );
-				if ( $rating_val && $rating_cnt ) {
-					$schema['aggregateRating'] = array(
-						'@type'       => 'AggregateRating',
-						'ratingValue' => (float) $rating_val,
-						'reviewCount' => (int) $rating_cnt,
-						'bestRating'  => 5,
-						'worstRating' => 1,
-					);
+				$rating = self::aggregate_rating( $v );
+				if ( $rating ) {
+					$schema['aggregateRating'] = $rating;
 				}
 				break;
 
 			case 'Event':
-				$start = self::val( $v, 'startDate' );
-				if ( $start ) {
-					$schema['startDate'] = $start;
+				foreach ( array( 'startDate', 'endDate', 'previousStartDate' ) as $prop ) {
+					$val = self::val( $v, $prop );
+					if ( $val ) {
+						$schema[ $prop ] = $val;
+					}
 				}
-				$end = self::val( $v, 'endDate' );
-				if ( $end ) {
-					$schema['endDate'] = $end;
-				}
+				$mode = self::val( $v, 'eventAttendanceMode', 'OfflineEventAttendanceMode' );
+				$schema['eventAttendanceMode'] = 'https://schema.org/' . $mode;
+
+				$place    = null;
 				$loc_name = self::val( $v, 'location_name' );
 				$loc_addr = self::val( $v, 'location_address' );
 				if ( $loc_name || $loc_addr ) {
-					$loc = array( '@type' => 'Place' );
-					if ( $loc_name ) $loc['name'] = $loc_name;
-					if ( $loc_addr ) $loc['address'] = $loc_addr;
-					$schema['location'] = $loc;
+					$place = array( '@type' => 'Place' );
+					if ( $loc_name ) $place['name'] = $loc_name;
+					if ( $loc_addr ) $place['address'] = array( '@type' => 'PostalAddress', 'streetAddress' => $loc_addr );
 				}
+				$loc_url = self::val( $v, 'location_url' );
+				$virtual = $loc_url ? array( '@type' => 'VirtualLocation', 'url' => $loc_url ) : null;
+				if ( 'OnlineEventAttendanceMode' === $mode ) {
+					$location = $virtual ?? $place;
+				} elseif ( 'MixedEventAttendanceMode' === $mode ) {
+					$location = array_values( array_filter( array( $place, $virtual ) ) );
+					$location = count( $location ) === 1 ? $location[0] : ( $location ?: null );
+				} else {
+					$location = $place;
+				}
+				if ( $location ) {
+					$schema['location'] = $location;
+				}
+
 				$org_name = self::val( $v, 'organizer_name' );
 				if ( $org_name ) {
-					$schema['organizer'] = array( '@type' => 'Organization', 'name' => $org_name );
+					$schema['organizer'] = self::org_ref( $settings, (string) $org_name );
+					$org_url = self::val( $v, 'organizer_url' );
+					if ( $org_url ) {
+						$schema['organizer']['url'] = $org_url;
+					}
 				}
-				$mode = self::val( $v, 'eventAttendanceMode' );
-				if ( $mode ) {
-					$schema['eventAttendanceMode'] = 'https://schema.org/' . $mode;
+				$performer = self::val( $v, 'performer_name' );
+				if ( $performer ) {
+					$schema['performer'] = array( '@type' => 'PerformingGroup', 'name' => $performer );
 				}
 				$status = self::val( $v, 'eventStatus' );
 				if ( $status ) {
@@ -403,18 +518,19 @@ class AEOMATIC_Schema_Generator {
 						'@type'         => 'Offer',
 						'price'         => (string) $ticket_price,
 						'priceCurrency' => self::val( $v, 'offer_currency', 'USD' ),
+						'availability'  => 'https://schema.org/' . self::val( $v, 'offer_availability', 'InStock' ),
+						'url'           => self::val( $v, 'offer_url', $permalink ),
 					);
 				}
 				break;
 
 			case 'JobPosting':
-				$schema['title']      = self::val( $v, 'title', self::val( $v, 'name' ) );
+				$schema['title']      = self::val( $v, 'title', $schema['name'] );
 				$schema['datePosted'] = self::val( $v, 'datePosted', get_the_date( 'c', $post ) );
-				$org_name = self::val( $v, 'hiringOrg_name', get_bloginfo( 'name' ) );
-				$schema['hiringOrganization'] = array( '@type' => 'Organization', 'name' => $org_name );
+				$schema['hiringOrganization'] = self::org_ref( $settings, (string) self::val( $v, 'hiringOrg_name', self::org_name( $settings ) ) );
 				$org_url = self::val( $v, 'hiringOrg_url' );
 				if ( $org_url ) {
-					$schema['hiringOrganization']['url'] = $org_url;
+					$schema['hiringOrganization']['sameAs'] = $org_url;
 				}
 				$emp_type = self::val( $v, 'employmentType' );
 				if ( $emp_type ) {
@@ -433,22 +549,48 @@ class AEOMATIC_Schema_Generator {
 						),
 					);
 				}
+				// A fully remote role replaces jobLocation with the countries
+				// applicants may live in.
 				$job_location = self::val( $v, 'jobLocation_address' );
+				if ( 'TELECOMMUTE' === self::val( $v, 'jobLocationType' ) ) {
+					$schema['jobLocationType'] = 'TELECOMMUTE';
+					$countries = array_filter( array_map( 'trim', explode( ',', (string) self::val( $v, 'applicantLocation', '' ) ) ) );
+					if ( $countries ) {
+						$schema['applicantLocationRequirements'] = array_values( array_map(
+							static fn( $c ) => array( '@type' => 'Country', 'name' => $c ),
+							$countries
+						) );
+					}
+				}
 				if ( $job_location ) {
-					$schema['jobLocation'] = array( '@type' => 'Place', 'address' => $job_location );
+					$schema['jobLocation'] = array(
+						'@type'   => 'Place',
+						'address' => array( '@type' => 'PostalAddress', 'streetAddress' => $job_location ),
+					);
 				}
 				$valid_through = self::val( $v, 'validThrough' );
 				if ( $valid_through ) {
 					$schema['validThrough'] = $valid_through;
 				}
+				$direct = self::bool_val( $v, 'directApply' );
+				if ( null !== $direct ) {
+					$schema['directApply'] = $direct;
+				}
+				$job_id = self::val( $v, 'identifier_value' );
+				if ( $job_id ) {
+					$schema['identifier'] = array(
+						'@type' => 'PropertyValue',
+						'name'  => $schema['hiringOrganization']['name'],
+						'value' => $job_id,
+					);
+				}
 				break;
 
 			case 'Course':
-				$provider_name = self::val( $v, 'provider_name', get_bloginfo( 'name' ) );
-				$schema['provider'] = array( '@type' => 'Organization', 'name' => $provider_name );
+				$schema['provider'] = self::org_ref( $settings, (string) self::val( $v, 'provider_name', self::org_name( $settings ) ) );
 				$prov_url = self::val( $v, 'provider_url', home_url( '/' ) );
 				if ( $prov_url ) {
-					$schema['provider']['url'] = $prov_url;
+					$schema['provider']['sameAs'] = $prov_url;
 				}
 				$course_price = self::val( $v, 'offer_price' );
 				if ( $course_price !== '' && $course_price !== null ) {
@@ -470,6 +612,12 @@ class AEOMATIC_Schema_Generator {
 				break;
 
 			case 'LocalBusiness':
+				// The most specific subtype is the @type itself; Google does
+				// not support additionalType.
+				$subtype = (string) self::val( $v, 'business_subtype', 'LocalBusiness' );
+				if ( isset( AEOMATIC_Schema_Fields::local_business_subtypes()[ $subtype ] ) ) {
+					$schema['@type'] = $subtype;
+				}
 				$street  = self::val( $v, 'address_street' );
 				$city    = self::val( $v, 'address_city' );
 				$region  = self::val( $v, 'address_region' );
@@ -484,30 +632,37 @@ class AEOMATIC_Schema_Generator {
 					if ( $country ) $addr['addressCountry']  = $country;
 					$schema['address'] = $addr;
 				}
+				$lat = self::val( $v, 'geo_latitude' );
+				$lng = self::val( $v, 'geo_longitude' );
+				if ( is_numeric( $lat ) && is_numeric( $lng ) ) {
+					$schema['geo'] = array(
+						'@type'     => 'GeoCoordinates',
+						'latitude'  => (float) $lat,
+						'longitude' => (float) $lng,
+					);
+				}
 				$phone = self::val( $v, 'telephone' );
 				if ( $phone ) {
 					$schema['telephone'] = $phone;
 				}
 				$hours = self::as_list( $v, 'openingHours' );
 				if ( $hours ) {
-					$schema['openingHours'] = $hours;
+					$spec = self::opening_hours_spec( $hours );
+					if ( $spec ) {
+						$schema['openingHoursSpecification'] = $spec;
+					} else {
+						$schema['openingHours'] = $hours;
+					}
 				}
-				$price_range = self::val( $v, 'priceRange' );
-				if ( $price_range ) {
-					$schema['priceRange'] = $price_range;
+				foreach ( array( 'priceRange', 'servesCuisine', 'menu' ) as $prop ) {
+					$val = self::val( $v, $prop );
+					if ( $val ) {
+						$schema[ $prop ] = $val;
+					}
 				}
-				$rating_val = self::val( $v, 'aggregateRating_value' );
-				$rating_cnt = self::val( $v, 'aggregateRating_count' );
-				// Both are required — Google rejects an AggregateRating with no
-				// count, and inventing a count of 1 would misreport the reviews.
-				if ( $rating_val && $rating_cnt ) {
-					$schema['aggregateRating'] = array(
-						'@type'       => 'AggregateRating',
-						'ratingValue' => (float) $rating_val,
-						'reviewCount' => (int) $rating_cnt,
-						'bestRating'  => 5,
-						'worstRating' => 1,
-					);
+				$rating = self::aggregate_rating( $v );
+				if ( $rating ) {
+					$schema['aggregateRating'] = $rating;
 				}
 				break;
 
@@ -516,8 +671,7 @@ class AEOMATIC_Schema_Generator {
 				if ( $service_type ) {
 					$schema['serviceType'] = $service_type;
 				}
-				$prov_name = self::val( $v, 'provider_name', get_bloginfo( 'name' ) );
-				$schema['provider'] = array( '@type' => 'Organization', 'name' => $prov_name );
+				$schema['provider'] = self::org_ref( $settings, (string) self::val( $v, 'provider_name', self::org_name( $settings ) ) );
 				$area = self::val( $v, 'areaServed' );
 				if ( $area ) {
 					$schema['areaServed'] = $area;
@@ -532,6 +686,78 @@ class AEOMATIC_Schema_Generator {
 				}
 				break;
 
+			case 'Dataset':
+				if ( isset( $schema['description'] ) ) {
+					$schema['description'] = mb_substr( (string) $schema['description'], 0, 5000 );
+				}
+				$creator = self::val( $v, 'creator_name' );
+				if ( $creator ) {
+					$schema['creator'] = self::org_ref( $settings, (string) $creator );
+				}
+				foreach ( array( 'license', 'identifier', 'keywords', 'version', 'temporalCoverage', 'measurementTechnique', 'citation' ) as $prop ) {
+					$val = self::val( $v, $prop );
+					if ( $val ) {
+						$schema[ $prop ] = $val;
+					}
+				}
+				$free = self::bool_val( $v, 'isAccessibleForFree' );
+				if ( null !== $free ) {
+					$schema['isAccessibleForFree'] = $free;
+				}
+				$spatial = self::val( $v, 'spatialCoverage' );
+				if ( $spatial ) {
+					$schema['spatialCoverage'] = array( '@type' => 'Place', 'name' => $spatial );
+				}
+				$variables = self::as_list( $v, 'variableMeasured' );
+				if ( $variables ) {
+					$schema['variableMeasured'] = $variables;
+				}
+				$download = self::val( $v, 'distribution_url' );
+				if ( $download ) {
+					$dist = array( '@type' => 'DataDownload', 'contentUrl' => $download );
+					$format = self::val( $v, 'distribution_format' );
+					if ( $format ) {
+						$dist['encodingFormat'] = $format;
+					}
+					$schema['distribution'] = array( $dist );
+				}
+				break;
+
+			case 'AboutPage':
+				// The organization this page is about. The full Organization
+				// node is printed on this page, so a reference is enough.
+				$schema['mainEntity'] = ! empty( $settings['organization'] )
+					? array( '@id' => self::org_id() )
+					: self::org_ref( $settings, self::org_name( $settings ) );
+				break;
+
+			case 'ProfilePage':
+				$entity_name = self::val( $v, 'mainEntity_name' );
+				if ( $entity_name ) {
+					$entity_type = 'Organization' === self::val( $v, 'mainEntity_type' ) ? 'Organization' : 'Person';
+					$entity      = array( '@type' => $entity_type, 'name' => $entity_name );
+					$wp_author   = get_userdata( (int) $post->post_author );
+					if ( 'Person' === $entity_type && $wp_author && ! empty( $settings['author'] ) && $wp_author->display_name === $entity_name ) {
+						$entity['@id'] = self::person_id( $wp_author->ID );
+					}
+					if ( 'Person' === $entity_type && self::val( $v, 'mainEntity_jobTitle' ) ) {
+						$entity['jobTitle'] = self::val( $v, 'mainEntity_jobTitle' );
+					}
+					foreach ( array( 'description', 'image' ) as $prop ) {
+						$val = self::val( $v, 'mainEntity_' . $prop );
+						if ( $val ) {
+							$entity[ $prop ] = $val;
+						}
+					}
+					$same = self::as_list( $v, 'mainEntity_sameAs' );
+					if ( $same ) {
+						$entity['sameAs'] = $same;
+					}
+					$schema['mainEntity'] = $entity;
+				}
+				$schema['dateCreated'] = $schema['datePublished'];
+				break;
+
 			case 'Book':
 				$isbn = self::val( $v, 'isbn' );
 				if ( $isbn ) {
@@ -543,7 +769,7 @@ class AEOMATIC_Schema_Generator {
 				}
 				$pub_name_book = self::val( $v, 'publisher_name' );
 				if ( $pub_name_book ) {
-					$schema['publisher'] = array( '@type' => 'Organization', 'name' => $pub_name_book );
+					$schema['publisher'] = self::org_ref( $settings, (string) $pub_name_book );
 				}
 				$fmt = self::val( $v, 'bookFormat' );
 				if ( $fmt ) {
@@ -561,6 +787,56 @@ class AEOMATIC_Schema_Generator {
 		 * @param array   $merged Merged field values used to build the schema.
 		 */
 		return (array) apply_filters( 'aeomatic_schema_output', $schema, $post, $type, $v );
+	}
+
+	/**
+	 * AggregateRating from the rating value/count fields, or null. Both are
+	 * required — inventing a count would misreport the reviews.
+	 */
+	private static function aggregate_rating( array $v ): ?array {
+		$rating_val = self::val( $v, 'aggregateRating_value' );
+		$rating_cnt = self::val( $v, 'aggregateRating_count' );
+		if ( ! $rating_val || ! $rating_cnt ) {
+			return null;
+		}
+		return array(
+			'@type'       => 'AggregateRating',
+			'ratingValue' => (float) $rating_val,
+			'reviewCount' => (int) $rating_cnt,
+			'bestRating'  => 5,
+			'worstRating' => 1,
+		);
+	}
+
+	/**
+	 * Turn "Mo-Fr 09:00-18:00" lines into OpeningHoursSpecification, which is
+	 * the form Google documents. Returns null if any line does not parse, so
+	 * the caller keeps the plain openingHours text instead of dropping hours.
+	 *
+	 * @param string[] $lines
+	 * @return array<int,array>|null
+	 */
+	private static function opening_hours_spec( array $lines ): ?array {
+		$days = array( 'Mo' => 'Monday', 'Tu' => 'Tuesday', 'We' => 'Wednesday', 'Th' => 'Thursday', 'Fr' => 'Friday', 'Sa' => 'Saturday', 'Su' => 'Sunday' );
+		$keys = array_keys( $days );
+		$out  = array();
+		foreach ( $lines as $line ) {
+			if ( ! preg_match( '/^(Mo|Tu|We|Th|Fr|Sa|Su)(?:\s*-\s*(Mo|Tu|We|Th|Fr|Sa|Su))?\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/i', trim( $line ), $m ) ) {
+				return null;
+			}
+			$from = array_search( ucfirst( strtolower( $m[1] ) ), $keys, true );
+			$to   = '' !== $m[2] ? array_search( ucfirst( strtolower( $m[2] ) ), $keys, true ) : $from;
+			if ( false === $from || false === $to || $to < $from ) {
+				return null;
+			}
+			$out[] = array(
+				'@type'     => 'OpeningHoursSpecification',
+				'dayOfWeek' => array_map( static fn( $k ) => $days[ $k ], array_slice( $keys, $from, $to - $from + 1 ) ),
+				'opens'     => str_pad( $m[3], 5, '0', STR_PAD_LEFT ),
+				'closes'    => str_pad( $m[4], 5, '0', STR_PAD_LEFT ),
+			);
+		}
+		return $out ?: null;
 	}
 
 	// ── Sanitisation ──────────────────────────────────────────────────────
@@ -626,6 +902,25 @@ class AEOMATIC_Schema_Generator {
 			return $default;
 		}
 		return $val;
+	}
+
+	/**
+	 * Read a yes/no select as a real boolean. The editor stores "true" /
+	 * "false" strings; JSON-LD needs true / false, since the string "false"
+	 * is truthy to a parser. Returns null when the field is unset.
+	 */
+	private static function bool_val( array $v, string $key ): ?bool {
+		$val = $v[ $key ] ?? null;
+		if ( is_bool( $val ) ) {
+			return $val;
+		}
+		if ( 'true' === $val || '1' === $val ) {
+			return true;
+		}
+		if ( 'false' === $val || '0' === $val ) {
+			return false;
+		}
+		return null;
 	}
 
 	/** Return a field as a flat list of strings, accepting array or newline string. */

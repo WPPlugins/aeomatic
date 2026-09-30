@@ -212,6 +212,9 @@ class AEOMATIC_Audit {
 
 		return rest_ensure_response( array(
 			'post_id'       => $post->ID,
+			// For the editor's "Test this post with Google" link. Only a
+			// published post has a URL Google can fetch.
+			'permalink'     => 'publish' === $post->post_status ? (string) get_permalink( $post ) : '',
 			'type'          => $type,
 			'type_label'    => $known[ $type ]['label'] ?? $type,
 			'confidence'    => $analysis['confidence'],
@@ -326,28 +329,6 @@ class AEOMATIC_Audit {
 			$built = AEOMATIC_Schema_Generator::generate( $post, $type, $settings, $in_flight );
 			if ( $built ) {
 				$blocks[] = $built;
-			}
-		}
-
-		// Also include FAQ schema if present and not the primary type.
-		if ( ! empty( $settings['faq'] ) && ! in_array( $type, array( 'FAQPage', 'QAPage' ), true ) ) {
-			$extracted = AEOMATIC_Content_Extractor::extract( $post );
-			if ( ! empty( $extracted['faqs'] ) ) {
-				$faq_block = array(
-					'@context'   => 'https://schema.org',
-					'@type'      => 'FAQPage',
-					'mainEntity' => array_map( static function ( $pair ) {
-						return array(
-							'@type'          => 'Question',
-							'name'           => $pair['q'],
-							'acceptedAnswer' => array(
-								'@type' => 'Answer',
-								'text'  => $pair['a'],
-							),
-						);
-					}, $extracted['faqs'] ),
-				);
-				$blocks[] = $faq_block;
 			}
 		}
 
@@ -494,7 +475,7 @@ class AEOMATIC_Audit {
 			'points' => $has_direct_answer ? 15 : 0,
 			'max'    => 15,
 			'passed' => $has_direct_answer,
-			'hint'   => __( 'Open with a clear, complete answer in the first 1–2 sentences. AI engines extract opening paragraphs first.', 'aeomatic' ),
+			'hint'   => __( 'Open with a clear, complete answer in the first 1–2 sentences, so the answer does not depend on reading the whole page.', 'aeomatic' ),
 		);
 
 		// 2. Question-style headings (10 pts).
@@ -521,18 +502,18 @@ class AEOMATIC_Audit {
 			'points' => $question_pts,
 			'max'    => 10,
 			'passed' => $question_pts === 10,
-			'hint'   => __( 'Use natural questions as headings ("How does X work?"). AI engines map these to user queries.', 'aeomatic' ),
+			'hint'   => __( 'Use natural questions as headings ("How does X work?"). They match how people phrase questions to AI assistants.', 'aeomatic' ),
 		);
 
 		// 3. FAQ block present (10 pts).
 		$has_faq = ! empty( $extracted['faqs'] ) || $this->content_has_faq_block( $content_html );
 		$checks[] = array(
 			'key'    => 'faq_block',
-			'label'  => __( 'FAQ block included', 'aeomatic' ),
+			'label'  => __( 'FAQ on the page', 'aeomatic' ),
 			'points' => $has_faq ? 10 : 0,
 			'max'    => 10,
 			'passed' => $has_faq,
-			'hint'   => __( 'Add an AEO FAQ block (Gutenberg) or [aeo_faq][aeo_qa] shortcode (Classic Editor). FAQ schema is one of the strongest AEO signals.', 'aeomatic' ),
+			'hint'   => __( 'Add a few questions with short, direct answers — the AEO FAQ block, the [aeo_faq] shortcode, or an accordion or toggle from your builder all count. AEOmatic also checks the live page, so FAQs from your theme or other plugins are found too.', 'aeomatic' ),
 		);
 
 		// 4. Schema enabled (proxy) — checks settings (15 pts).
@@ -556,7 +537,7 @@ class AEOMATIC_Audit {
 			'points' => $has_author ? 10 : 0,
 			'max'    => 10,
 			'passed' => $has_author,
-			'hint'   => __( 'Add a 30+ character author bio. Author authority is a key AI citation signal.', 'aeomatic' ),
+			'hint'   => __( 'Add a 30+ character author bio. A named author with real credentials makes the content easier to trust and attribute.', 'aeomatic' ),
 		);
 
 		// 6. Internal links (10 pts).
@@ -589,7 +570,7 @@ class AEOMATIC_Audit {
 			'points' => $structured_pts,
 			'max'    => 10,
 			'passed' => $structured_pts === 10,
-			'hint'   => __( 'Add at least one table and one list. AI engines prefer structured data over prose.', 'aeomatic' ),
+			'hint'   => __( 'Add at least one table and one list. Structured chunks are easier to extract than long paragraphs.', 'aeomatic' ),
 		);
 
 		// 8. Image alt text (5 pts).
@@ -696,7 +677,7 @@ class AEOMATIC_Audit {
 			'points' => $fresh_pts,
 			'max'    => 5,
 			'passed' => 5 === $fresh_pts,
-			'hint'   => __( 'Refresh the post (any meaningful edit) at least every 6 months. Recency is a measurable AI citation factor.', 'aeomatic' ),
+			'hint'   => __( 'Review the post at least every 6 months and update anything out of date. Fresh, accurate facts matter to readers and engines alike.', 'aeomatic' ),
 		);
 
 		// Normalise to 0–100 so existing dashboard thresholds (≥70 good, ≥40 okay) keep working
@@ -710,7 +691,8 @@ class AEOMATIC_Audit {
 		$score = $max_total > 0 ? (int) round( ( $earned / $max_total ) * 100 ) : 0;
 
 		update_post_meta( $post->ID, self::META_SCORE, $score );
-		update_post_meta( $post->ID, self::META_BREAKDOWN, wp_json_encode( $checks ) );
+		// wp_slash: update_post_meta() unslashes, which would corrupt the JSON's escapes.
+		update_post_meta( $post->ID, self::META_BREAKDOWN, wp_slash( wp_json_encode( $checks ) ) );
 
 		AEOMATIC_Activity::bump( 'audits_run' );
 

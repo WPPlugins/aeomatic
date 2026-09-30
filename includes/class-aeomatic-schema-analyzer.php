@@ -53,11 +53,10 @@ class AEOMATIC_Schema_Analyzer {
 				'NewsArticle'       => array( 'label' => 'News article',     'description' => 'Time-sensitive news content' ),
 				'TechArticle'       => array( 'label' => 'Technical article', 'description' => 'How-to, documentation, technical guide' ),
 				'Recipe'            => array( 'label' => 'Recipe',           'description' => 'Cooking recipe with ingredients and steps' ),
-				'HowTo'             => array( 'label' => 'How-to guide',     'description' => 'Step-by-step instructional content' ),
-				'FAQPage'           => array( 'label' => 'FAQ page',         'description' => 'Page primarily of Q&A pairs' ),
-				'QAPage'            => array( 'label' => 'Q&A page',         'description' => 'Single-question discussion' ),
 				'Review'            => array( 'label' => 'Review',           'description' => 'Review of a product or service' ),
-				'Product'           => array( 'label' => 'Product',          'description' => 'Product listing' ),
+				'Product'           => array( 'label' => 'Product',          'description' => 'Physical or retail product listing' ),
+				'SoftwareApplication' => array( 'label' => 'Software application', 'description' => 'App, plugin or SaaS product page' ),
+				'Dataset'           => array( 'label' => 'Dataset',          'description' => 'Original data or research you publish' ),
 				'Service'           => array( 'label' => 'Service',          'description' => 'Service offering page' ),
 				'LocalBusiness'     => array( 'label' => 'Local business',   'description' => 'Physical business location' ),
 				'Event'             => array( 'label' => 'Event',            'description' => 'Scheduled event' ),
@@ -139,7 +138,8 @@ class AEOMATIC_Schema_Analyzer {
 		self::$request_cache[ $post->ID ] = $result;
 
 		// Persist to post meta so subsequent frontend renders read this cache.
-		update_post_meta( $post->ID, self::META_ANALYSIS, wp_json_encode( $result ) );
+		// wp_slash: update_post_meta() unslashes, which would corrupt the JSON's escapes.
+		update_post_meta( $post->ID, self::META_ANALYSIS, wp_slash( wp_json_encode( $result ) ) );
 
 		return $result;
 	}
@@ -316,8 +316,11 @@ class AEOMATIC_Schema_Analyzer {
 			'documentation'=> array( 'TechArticle' => 80 ),
 			'kb'           => array( 'TechArticle' => 70 ),
 			'help-center'  => array( 'TechArticle' => 70 ),
-			'tutorial'     => array( 'HowTo' => 70 ),
-			'faq'          => array( 'FAQPage' => 90 ),
+			'tutorial'     => array( 'TechArticle' => 70 ),
+			'download'     => array( 'SoftwareApplication' => 80 ),
+			'software'     => array( 'SoftwareApplication' => 90 ),
+			'app'          => array( 'SoftwareApplication' => 80 ),
+			'dataset'      => array( 'Dataset' => 90 ),
 		);
 
 		if ( isset( $mappings[ $pt ] ) ) {
@@ -353,8 +356,7 @@ class AEOMATIC_Schema_Analyzer {
 	 * URL slug and title patterns. "/about", "/contact", "how-to-*", etc.
 	 */
 	private static function score_slug_and_title( string $slug, string $title, array &$scores, array &$reasons ): void {
-		$slug_lc  = strtolower( $slug );
-		$title_lc = strtolower( $title );
+		$slug_lc = strtolower( $slug );
 
 		// AboutPage / ContactPage by slug.
 		if ( 'about' === $slug_lc || 'about-us' === $slug_lc || false !== strpos( $slug_lc, 'about' ) ) {
@@ -364,15 +366,9 @@ class AEOMATIC_Schema_Analyzer {
 			self::add_score( $scores, $reasons, 'ContactPage', 80, __( 'Slug indicates Contact page → +80', 'aeomatic' ) );
 		}
 
-		// HowTo / TechArticle from title.
+		// TechArticle from title.
 		if ( preg_match( '/^how[\s-]+to\s+/i', $title ) ) {
-			self::add_score( $scores, $reasons, 'HowTo', 50, __( 'Title starts with "How to" → +50', 'aeomatic' ) );
 			self::add_score( $scores, $reasons, 'TechArticle', 30, __( 'Title starts with "How to" → +30', 'aeomatic' ) );
-		}
-
-		// FAQ patterns.
-		if ( false !== strpos( $title_lc, 'faq' ) || false !== strpos( $title_lc, 'frequently asked' ) ) {
-			self::add_score( $scores, $reasons, 'FAQPage', 60, __( 'Title contains "FAQ" → +60', 'aeomatic' ) );
 		}
 
 		// Recipe patterns.
@@ -403,7 +399,7 @@ class AEOMATIC_Schema_Analyzer {
 
 	/**
 	 * Inspect actual content for structural signals: ingredient lists,
-	 * step headings, ratings, schema-suggesting keywords, FAQ density.
+	 * ratings, local-business, event, job and course language.
 	 */
 	private static function score_content_signals( string $text, string $html, array &$scores, array &$reasons ): void {
 		if ( '' === $text ) {
@@ -434,36 +430,6 @@ class AEOMATIC_Schema_Analyzer {
 			// translators: %d: number of recipe-related signals found in content.
 			$aeomatic_reason = sprintf( __( 'Some recipe signals (%d) → +30', 'aeomatic' ), $recipe_signals );
 			self::add_score( $scores, $reasons, 'Recipe', 30, $aeomatic_reason );
-		}
-
-		// HowTo signals: numbered/step headings.
-		preg_match_all( '/<h[2-3][^>]*>(.*?)<\/h[2-3]>/is', $html, $hm );
-		$step_headings = 0;
-		foreach ( ( $hm[1] ?? array() ) as $h ) {
-			$plain = trim( wp_strip_all_tags( $h ) );
-			if ( preg_match( '/^\s*(step\s+\d+|[\d]+[\.\)])/i', $plain ) ) {
-				$step_headings++;
-			}
-		}
-		if ( $step_headings >= 3 ) {
-			// translators: %d: number of step-style headings found in the post.
-			$aeomatic_reason = sprintf( __( '%d step-style headings detected → +60', 'aeomatic' ), $step_headings );
-			self::add_score( $scores, $reasons, 'HowTo', 60, $aeomatic_reason );
-		}
-
-		// FAQ density: count question-style headings vs total headings.
-		$total_h = count( $hm[1] ?? array() );
-		$question_h = 0;
-		foreach ( ( $hm[1] ?? array() ) as $h ) {
-			$plain = trim( wp_strip_all_tags( $h ) );
-			if ( str_ends_with( $plain, '?' ) ) {
-				$question_h++;
-			}
-		}
-		if ( $total_h > 0 && $question_h / $total_h > 0.6 && $question_h >= 3 ) {
-			// translators: 1: number of question headings, 2: total heading count.
-			$aeomatic_reason = sprintf( __( '%1$d/%2$d headings are questions → +70', 'aeomatic' ), $question_h, $total_h );
-			self::add_score( $scores, $reasons, 'FAQPage', 70, $aeomatic_reason );
 		}
 
 		// Review signals: explicit rating mentions.
@@ -565,9 +531,9 @@ class AEOMATIC_Schema_Analyzer {
 			'recipe'   => 'Recipe',
 			'cooking'  => 'Recipe',
 			'food'     => 'Recipe',
-			'tutorial' => 'HowTo',
-			'how-to'   => 'HowTo',
-			'guide'    => 'HowTo',
+			'tutorial' => 'TechArticle',
+			'how-to'   => 'TechArticle',
+			'guide'    => 'TechArticle',
 			'news'     => 'NewsArticle',
 			'press'    => 'NewsArticle',
 			'announcement' => 'NewsArticle',
@@ -579,7 +545,6 @@ class AEOMATIC_Schema_Analyzer {
 			'career'   => 'JobPosting',
 			'course'   => 'Course',
 			'class'    => 'Course',
-			'faq'      => 'FAQPage',
 		);
 
 		foreach ( $mappings as $needle => $type ) {
@@ -645,7 +610,6 @@ class AEOMATIC_Schema_Analyzer {
 			'contact' => array( 'ContactPage' => 60 ),
 			'service' => array( 'Service' => 50 ),
 			'team'    => array( 'ProfilePage' => 50 ),
-			'faq'     => array( 'FAQPage' => 60 ),
 		);
 
 		foreach ( $mappings as $needle => $types ) {

@@ -137,14 +137,17 @@ class AEOMATIC_Citation_Gaps {
 		$raw    = $req->get_param( 'params' );
 		$params = is_array( $raw ) ? $raw : ( is_object( $raw ) ? (array) $raw : array() );
 
+		$value = null;
+
 		switch ( $code ) {
 			case 'set_schema_type':
 				$type = isset( $params['type'] ) ? (string) $params['type'] : '';
 				if ( '' === $type || ! class_exists( 'AEOMATIC_Schema_Analyzer' ) ) {
 					return new WP_Error( 'bad_request', __( 'Missing or unsupported schema type.', 'aeomatic' ), array( 'status' => 400 ) );
 				}
-				$known = (array) AEOMATIC_Schema_Analyzer::known_types();
-				if ( ! in_array( $type, $known, true ) ) {
+				// known_types() is keyed by type name; in_array() over its label
+				// arrays never matched, so this fix always failed.
+				if ( ! isset( AEOMATIC_Schema_Analyzer::known_types()[ $type ] ) ) {
 					return new WP_Error( 'bad_request', __( 'Unknown schema type.', 'aeomatic' ), array( 'status' => 400 ) );
 				}
 				AEOMATIC_Schema_Analyzer::set_override( $id, $type );
@@ -197,10 +200,30 @@ class AEOMATIC_Citation_Gaps {
 					wp_update_post( array( 'ID' => $id, 'post_excerpt' => $candidate ) );
 					$written_to[] = 'excerpt';
 				}
+				// Returned so the editor can fill its on-screen excerpt / SEO
+				// fields — otherwise the next Update posts them empty again.
+				$value   = $candidate;
 				$message = sprintf(
 					/* translators: %s: comma-separated list of targets updated */
 					__( 'Meta description generated (%s).', 'aeomatic' ),
 					implode( ', ', $written_to ?: array( 'excerpt' ) )
+				);
+				break;
+
+			case 'move_answers_up':
+				if ( ! AEOMATIC_Answer_First::can_apply( $post ) ) {
+					return new WP_Error( 'unsupported_editor', __( 'This page is built with a page builder. Move the answer in the builder instead.', 'aeomatic' ), array( 'status' => 400 ) );
+				}
+				$result = AEOMATIC_Answer_First::apply( $post );
+				if ( 0 === $result['moved'] ) {
+					return new WP_Error( 'nothing_moved', __( 'The answer could not be moved automatically, usually because it contains a link or formatting. Move it by hand.', 'aeomatic' ), array( 'status' => 409 ) );
+				}
+				$post    = get_post( $id );
+				$content = (string) $post->post_content;
+				$message = sprintf(
+					/* translators: %d: number of answers moved */
+					_n( 'Moved %d answer to the top of its section. Undo from Revisions if you prefer the old version.', 'Moved %d answers to the top of their sections. Undo from Revisions if you prefer the old version.', $result['moved'], 'aeomatic' ),
+					$result['moved']
 				);
 				break;
 
@@ -211,11 +234,18 @@ class AEOMATIC_Citation_Gaps {
 		// Rebuild gaps so the caller sees the update reflected immediately.
 		$refreshed = $this->get_or_build( $post, true );
 
-		return rest_ensure_response( array(
+		$response = array(
 			'ok'      => true,
 			'message' => $message,
+			'value'   => $value,
 			'gaps'    => $refreshed,
-		) );
+		);
+		// Content fixes send the new content so an open editor can reload it
+		// instead of saving its stale copy over the fix.
+		if ( isset( $content ) ) {
+			$response['content'] = $content;
+		}
+		return rest_ensure_response( $response );
 	}
 
 	private function is_seo_plugin_active( string $slug ): bool {
@@ -307,6 +337,11 @@ class AEOMATIC_Citation_Gaps {
 		foreach ( $q->posts as $post ) {
 			$gaps  = $this->read_cached_gaps( $post->ID );
 			$score = (int) get_post_meta( $post->ID, self::META_SCORE, true );
+			if ( null === $gaps ) {
+				$fresh = $this->get_or_build( $post, true );
+				$gaps  = $fresh['gaps'];
+				$score = (int) $fresh['score'];
+			}
 
 			if ( '' !== $severity ) {
 				$gaps = array_values( array_filter( $gaps, static fn( $g ) => ( $g['severity'] ?? '' ) === $severity ) );
@@ -442,8 +477,8 @@ class AEOMATIC_Citation_Gaps {
 		$fingerprint = $this->fingerprint_for( $post );
 		$stored_fp   = (string) get_post_meta( $post->ID, self::META_FINGERPRINT, true );
 
-		if ( ! $force && $fingerprint === $stored_fp ) {
-			$cached = $this->read_cached_gaps( $post->ID );
+		$cached = ( ! $force && $fingerprint === $stored_fp ) ? $this->read_cached_gaps( $post->ID ) : null;
+		if ( null !== $cached ) {
 			$score  = (int) get_post_meta( $post->ID, self::META_SCORE, true );
 			return array(
 				'gaps'         => $cached,
@@ -482,7 +517,8 @@ class AEOMATIC_Citation_Gaps {
 			return strcmp( (string) ( $a['code'] ?? '' ), (string) ( $b['code'] ?? '' ) );
 		} );
 
-		update_post_meta( $post->ID, self::META_GAPS, wp_json_encode( $as_arrays ) );
+		// wp_slash: update_post_meta() unslashes, which would corrupt the JSON's escapes.
+		update_post_meta( $post->ID, self::META_GAPS, wp_slash( wp_json_encode( $as_arrays ) ) );
 		update_post_meta( $post->ID, self::META_FINGERPRINT, $fingerprint );
 		update_post_meta( $post->ID, self::META_FINGERPRINT . '_at', time() );
 		update_post_meta( $post->ID, self::META_SCORE, $score );
@@ -495,13 +531,20 @@ class AEOMATIC_Citation_Gaps {
 		);
 	}
 
-	private function read_cached_gaps( int $post_id ): array {
+	/**
+	 * Cached gaps for a post, or null when the stored JSON can't be decoded.
+	 *
+	 * Before 1.2.4 the payload was written without wp_slash(), so any gap text
+	 * containing a quote or non-ASCII character was stored corrupted. Null
+	 * tells callers to rebuild rather than report "no gaps".
+	 */
+	private function read_cached_gaps( int $post_id ): ?array {
 		$raw = (string) get_post_meta( $post_id, self::META_GAPS, true );
 		if ( '' === $raw ) {
 			return array();
 		}
 		$decoded = json_decode( $raw, true );
-		return is_array( $decoded ) ? $decoded : array();
+		return is_array( $decoded ) ? $decoded : null;
 	}
 
 	private function fingerprint_for( WP_Post $post ): string {

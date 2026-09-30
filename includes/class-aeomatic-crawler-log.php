@@ -104,6 +104,12 @@ class AEOMATIC_Crawler_Log {
 			return;
 		}
 
+		// AEOmatic's own AI Access check sends crawler user agents from this
+		// server. Those are tests, not visits.
+		if ( class_exists( 'AEOMATIC_AI_Access' ) && AEOMATIC_AI_Access::is_test_request() ) {
+			return;
+		}
+
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$uri = isset( $_SERVER['REQUEST_URI'] ) ? esc_url_raw( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/';
 

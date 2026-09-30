@@ -45,13 +45,13 @@ class AEOMATIC_Analyzer_Trust implements AEOMATIC_Readiness_Analyzer_Interface {
 		if ( ! $this->has_author_byline( $post ) ) {
 			$score -= 20;
 			$issues[]          = __( 'No author byline — post shows no attributable expert.', 'aeomatic' );
-			$recommendations[] = __( 'Assign a user with a filled-in bio as the author. AI engines cite content with a named expert more often.', 'aeomatic' );
+			$recommendations[] = __( 'Assign a user with a filled-in bio as the author, so readers and engines can see who wrote the page.', 'aeomatic' );
 		}
 
 		$age_days = $this->age_in_days( $post );
 		if ( $age_days > self::STALE_DAYS ) {
 			$score -= 15;
-			$issues[]          = sprintf( __( 'Post was last modified %d days ago; AI engines de-prioritise stale content.', 'aeomatic' ), $age_days );
+			$issues[]          = sprintf( __( 'Post was last modified %d days ago. Check the facts are still current.', 'aeomatic' ), $age_days );
 			$recommendations[] = __( 'Update the post — refresh dates, stats, and examples — to signal ongoing accuracy.', 'aeomatic' );
 		}
 

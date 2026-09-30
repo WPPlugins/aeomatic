@@ -479,8 +479,49 @@
 				.catch( e => { setError( e.message ); setLoading( false ); } );
 		};
 
+		// Content fixes edit post_content on the server. In the block editor,
+		// refuse while there are unsaved changes (they would be lost or would
+		// overwrite the fix), then load the fixed content into the editor.
+		const editorStore = () => {
+			try {
+				return wp.data && wp.data.select( 'core/editor' ) && wp.data.select( 'core/editor' ).getCurrentPostId
+					? wp.data.select( 'core/editor' )
+					: null;
+			} catch ( e ) {
+				return null;
+			}
+		};
+
+		const syncEditorContent = ( content ) => {
+			const store = editorStore();
+			if ( store && store.getCurrentPostId() === postId && wp.blocks && wp.blocks.parse ) {
+				const dispatcher = wp.data.dispatch( 'core/editor' );
+				dispatcher.resetEditorBlocks( wp.blocks.parse( content ) );
+				return;
+			}
+			// Classic editor screen: reload so the editor shows the new content.
+			if ( document.getElementById( 'post' ) && document.getElementById( 'content' ) ) {
+				window.location.reload();
+			}
+		};
+
 		const applyFix = ( gapCode, fixAction ) => {
 			if ( ! postId || ! fixAction ) return;
+			if ( 'move_answers_up' === fixAction.code ) {
+				const store = editorStore();
+				if ( store && store.getCurrentPostId() === postId && store.isEditedPostDirty() ) {
+					setToast( __( 'Save your changes first, then apply this fix.', 'aeomatic' ) );
+					setTimeout( () => setToast( null ), 5000 );
+					return;
+				}
+				const classicChanged = ! store && window.wp && wp.autosave && wp.autosave.server &&
+					typeof wp.autosave.server.postChanged === 'function' && wp.autosave.server.postChanged();
+				if ( classicChanged ) {
+					setToast( __( 'Save your changes first, then apply this fix.', 'aeomatic' ) );
+					setTimeout( () => setToast( null ), 5000 );
+					return;
+				}
+			}
 			setFixing( gapCode );
 			apiFetch( {
 				path:   `${REST}/citation-gaps/fix/${postId}`,
@@ -491,6 +532,7 @@
 					setFixing( null );
 					setToast( res && res.message ? res.message : __( 'Fix applied.', 'aeomatic' ) );
 					if ( res && res.gaps ) { setData( res.gaps ); }
+					if ( res && typeof res.content === 'string' ) { syncEditorContent( res.content ); }
 					setTimeout( () => setToast( null ), 3500 );
 				} )
 				.catch( e => {

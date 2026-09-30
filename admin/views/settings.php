@@ -33,9 +33,7 @@ settings_errors( 'aeomatic_messages' );
 			<?php
 			$aeomatic_schema_options = array(
 				'article'      => __( 'Article', 'aeomatic' ),
-				'faq'          => __( 'FAQ (from FAQ blocks)', 'aeomatic' ),
-				'howto'        => __( 'HowTo (auto-detected)', 'aeomatic' ),
-				'author'       => __( 'Author / Person', 'aeomatic' ),
+				'author'     => __( 'Author / Person', 'aeomatic' ),
 				'organization' => __( 'Organization (site-wide)', 'aeomatic' ),
 				'breadcrumb'   => __( 'BreadcrumbList', 'aeomatic' ),
 			);
@@ -73,6 +71,43 @@ settings_errors( 'aeomatic_messages' );
 					<p class="description"><?php esc_html_e( 'One URL per line. Used in Organization sameAs.', 'aeomatic' ); ?></p>
 				</td>
 			</tr>
+			<tr>
+				<th scope="row"><label for="aeob-org-description"><?php esc_html_e( 'Organization description', 'aeomatic' ); ?></label></th>
+				<td>
+					<textarea id="aeob-org-description" name="aeob[schema][org_description]" rows="2" class="large-text"><?php echo esc_textarea( $aeomatic_settings['schema']['org_description'] ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'The business details below are all optional. Registry identifiers such as D-U-N-S, LEI or VAT are the facts AI systems trust most when checking who is behind a site.', 'aeomatic' ); ?></p>
+				</td>
+			</tr>
+			<?php
+			$aeomatic_org_fields = array(
+				'org_legal_name'     => array( __( 'Legal name', 'aeomatic' ), 'text', __( 'The registered name, e.g. "Acme Widgets Ltd".', 'aeomatic' ) ),
+				'org_alternate_name' => array( __( 'Also known as', 'aeomatic' ), 'text', __( 'An abbreviation or former name.', 'aeomatic' ) ),
+				'org_email'          => array( __( 'Contact email', 'aeomatic' ), 'email', '' ),
+				'org_telephone'      => array( __( 'Phone', 'aeomatic' ), 'text', __( 'Include the country code.', 'aeomatic' ) ),
+				'org_founding_date'  => array( __( 'Founded', 'aeomatic' ), 'text', __( 'Year or date, e.g. 2014 or 2014-03-01.', 'aeomatic' ) ),
+				'org_street'         => array( __( 'Street address', 'aeomatic' ), 'text', '' ),
+				'org_city'           => array( __( 'City', 'aeomatic' ), 'text', '' ),
+				'org_region'         => array( __( 'State / region', 'aeomatic' ), 'text', '' ),
+				'org_postal'         => array( __( 'Postcode', 'aeomatic' ), 'text', '' ),
+				'org_country'        => array( __( 'Country', 'aeomatic' ), 'text', __( 'Two-letter code, e.g. US, IN, GB.', 'aeomatic' ) ),
+				'org_duns'           => array( __( 'D-U-N-S number', 'aeomatic' ), 'text', '' ),
+				'org_lei'            => array( __( 'LEI code', 'aeomatic' ), 'text', '' ),
+				'org_naics'          => array( __( 'NAICS code', 'aeomatic' ), 'text', '' ),
+				'org_vat'            => array( __( 'VAT ID', 'aeomatic' ), 'text', '' ),
+				'org_tax_id'         => array( __( 'Tax ID', 'aeomatic' ), 'text', '' ),
+			);
+			foreach ( $aeomatic_org_fields as $aeomatic_key => $aeomatic_field ) :
+				?>
+				<tr>
+					<th scope="row"><label for="aeob-<?php echo esc_attr( $aeomatic_key ); ?>"><?php echo esc_html( $aeomatic_field[0] ); ?></label></th>
+					<td>
+						<input type="<?php echo esc_attr( $aeomatic_field[1] ); ?>" id="aeob-<?php echo esc_attr( $aeomatic_key ); ?>" name="aeob[schema][<?php echo esc_attr( $aeomatic_key ); ?>]" value="<?php echo esc_attr( (string) $aeomatic_settings['schema'][ $aeomatic_key ] ); ?>" class="regular-text" />
+						<?php if ( '' !== $aeomatic_field[2] ) : ?>
+							<p class="description"><?php echo esc_html( $aeomatic_field[2] ); ?></p>
+						<?php endif; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
 		</table>
 
 		<h2 class="title"><?php esc_html_e( 'llms.txt', 'aeomatic' ); ?></h2>

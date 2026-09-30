@@ -75,7 +75,7 @@ class AEOMATIC_Gap_Internal_Coverage {
 			'orphan_page',
 			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
 			__( 'Orphan page — no other published content links here', 'aeomatic' ),
-			__( 'Add at least two contextual links to this page from related posts. Orphaned URLs are cited less by AI engines because they lack topical connection signals.', 'aeomatic' ),
+			__( 'Add at least two contextual links to this page from related posts. Pages nothing links to are harder for crawlers to find and to place in a topic.', 'aeomatic' ),
 			'orphan-page',
 			AEOMATIC_Gap_Result::SOURCE_INTERNAL_COVERAGE
 		);
@@ -218,7 +218,7 @@ class AEOMATIC_Gap_Internal_Coverage {
 			),
 			sprintf(
 				/* translators: %d: minimum recommended words */
-				__( 'AI engines skip thin pages. Expand to at least %d words with concrete detail, examples, and answers to sub-questions.', 'aeomatic' ),
+				__( 'Short pages give AI assistants little to quote. Expand to at least %d words with concrete detail, examples, and answers to sub-questions.', 'aeomatic' ),
 				self::THIN_BODY_MIN_WORDS
 			),
 			'thin-body',

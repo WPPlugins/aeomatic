@@ -4,7 +4,7 @@
  *
  * Mirrors the Gutenberg `aeomatic/faq` block as `[aeo_faq] / [aeo_qa]`
  * shortcodes so Classic Editor users (and any context where Gutenberg
- * isn't in play) can still emit FAQPage schema and accessible HTML.
+ * isn't in play) can still render accessible Q&A HTML.
  *
  * Usage:
  *   [aeo_faq]

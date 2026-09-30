@@ -351,7 +351,7 @@ class AEOMATIC_Verification {
 
 		if ( 0 === $count ) {
 			return $this->result( 'faq', __( 'FAQ blocks in use', 'aeomatic' ), 'warn',
-				__( 'No posts use the AEO FAQ block yet. Adding FAQs is the single biggest AEO signal — try adding one to your top post.', 'aeomatic' ),
+				__( 'No posts use the AEO FAQ block yet. A question with a short, direct answer is the passage featured snippets and AI answers quote most readily — try adding one to your top post.', 'aeomatic' ),
 				null, null );
 		}
 
@@ -362,7 +362,7 @@ class AEOMATIC_Verification {
 	}
 
 	private function check_author_bios(): array {
-		$users      = get_users( array( 'who' => 'authors', 'fields' => array( 'ID', 'display_name' ) ) );
+		$users      = get_users( array( 'capability' => array( 'edit_posts' ), 'fields' => array( 'ID', 'display_name' ) ) );
 		$total      = count( $users );
 		$with_bios  = 0;
 		$missing    = array();

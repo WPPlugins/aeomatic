@@ -25,6 +25,18 @@ class AEOMATIC_Content_Extractor {
 	private static $cache = array();
 
 	/**
+	 * Drop the in-request cache for one post (or all posts), e.g. after
+	 * AEOmatic itself edits the post content or after a live page scan.
+	 */
+	public static function forget( int $post_id = 0 ): void {
+		if ( $post_id ) {
+			unset( self::$cache[ $post_id ] );
+			return;
+		}
+		self::$cache = array();
+	}
+
+	/**
 	 * Extract a normalized representation of the post's content.
 	 *
 	 * @param WP_Post|int $post_or_id
@@ -130,6 +142,12 @@ class AEOMATIC_Content_Extractor {
 			$faqs = array_merge( $faqs, self::extract_acf_faqs( $post ) );
 		}
 
+		// 7. FAQs found on the live page by the last scan — covers the theme,
+		// templates and widgets that the saved post data does not show.
+		if ( class_exists( 'AEOMATIC_Page_Crawler' ) ) {
+			$faqs = array_merge( $faqs, AEOMATIC_Page_Crawler::cached_faqs( $post ) );
+		}
+
 		// Dedup by trimmed question — multiple sources often catch the same Q&A.
 		$faqs = self::dedup_faqs( $faqs );
 
@@ -219,7 +237,9 @@ class AEOMATIC_Content_Extractor {
 	 *   1. <details>/<summary>   — semantic disclosure widget
 	 *   2. <dl>/<dt>/<dd>        — definition lists
 	 *   3. Existing schema.org Question microdata in the HTML
-	 *   4. Question-style <h2>/<h3>/<h4> headings followed by paragraphs
+	 *   4. FAQ blocks and accordions built from divs (Yoast, Rank Math,
+	 *      Spectra, Kadence, Elementor, ARIA accordions)
+	 *   5. Question-style <h2>/<h3>/<h4> headings followed by paragraphs
 	 *
 	 * A "question-style" heading either ends with `?` or starts with a
 	 * recognised interrogative (how/what/why/when/where/who/which/is/are/can/do).
@@ -280,7 +300,10 @@ class AEOMATIC_Content_Extractor {
 			}
 		}
 
-		// 4. Question-style heading + following non-heading content. We split on
+		// 4. Div-based FAQ and accordion widgets.
+		$pairs = array_merge( $pairs, self::extract_accordion_faqs( $html ) );
+
+		// 5. Question-style heading + following non-heading content. We split on
 		// headings so each pair is a heading and the next sibling chunk before
 		// the next heading. Headings without a question mark must lead with an
 		// interrogative to be considered a question.
@@ -300,6 +323,78 @@ class AEOMATIC_Content_Extractor {
 					continue;
 				}
 				$pairs[] = array( 'q' => $q, 'a' => $a );
+			}
+		}
+
+		return $pairs;
+	}
+
+	/**
+	 * FAQ and accordion widgets that render as divs rather than <details>:
+	 * the FAQ blocks of Yoast, Rank Math, Spectra and Kadence, Elementor's
+	 * accordion and toggle, and any accordion built on the ARIA pattern
+	 * (a button with aria-expanded and aria-controls pointing at its panel),
+	 * which covers most theme and builder accordions.
+	 *
+	 * @return array<int,array{q:string,a:string}>
+	 */
+	public static function extract_accordion_faqs( string $html ): array {
+		$pairs = array();
+
+		// Question class => answer class, for widgets whose answers follow
+		// their question in the markup.
+		$known = array(
+			'schema-faq-question'      => 'schema-faq-answer',        // Yoast FAQ block
+			'rank-math-question'       => 'rank-math-answer',         // Rank Math FAQ block
+			'uagb-question'            => 'uagb-faq-content',         // Spectra FAQ
+			'kt-blocks-accordion-title' => 'kt-accordion-panel-inner', // Kadence accordion
+			'elementor-tab-title'      => 'elementor-tab-content',    // Elementor accordion / toggle
+		);
+		foreach ( $known as $q_class => $a_class ) {
+			$q_re = '/<([a-z][a-z0-9]*)\b[^>]*\bclass=("|\')[^"\']*(?<![\w-])' . preg_quote( $q_class, '/' ) . '(?![\w-])[^>]*>/i';
+			if ( ! preg_match_all( $q_re, $html, $qs, PREG_OFFSET_CAPTURE | PREG_SET_ORDER ) ) {
+				continue;
+			}
+			$a_re = '/<[a-z][a-z0-9]*\b[^>]*\bclass=("|\')[^"\']*(?<![\w-])' . preg_quote( $a_class, '/' ) . '(?![\w-])[^>]*>/i';
+			foreach ( $qs as $i => $q_match ) {
+				$start = $q_match[0][1];
+				$next  = isset( $qs[ $i + 1 ] ) ? $qs[ $i + 1 ][0][1] : min( strlen( $html ), $start + 6000 );
+				$chunk = substr( $html, $start, $next - $start );
+				// Question: the text of the question element itself.
+				$tag = $q_match[1][0];
+				if ( ! preg_match( '/^<' . $tag . '\b[^>]*>(.*?)<\/' . $tag . '>/is', $chunk, $qm ) ) {
+					continue;
+				}
+				if ( ! preg_match( $a_re, $chunk, $am, PREG_OFFSET_CAPTURE ) ) {
+					continue;
+				}
+				$q = self::clean_qa_text( $qm[1] );
+				$a = self::clean_qa_text( substr( $chunk, $am[0][1] ) );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => mb_substr( $a, 0, 1000 ) );
+				}
+			}
+		}
+
+		// ARIA accordions. Only question-like titles count, so tabs and
+		// menu toggles that use the same pattern are not mistaken for FAQs.
+		if ( preg_match_all( '/<(button|a|div|h[2-6]|span)\b([^>]*\baria-controls=("|\')([\w-]+)\3[^>]*)>(.*?)<\/\1>/is', $html, $m, PREG_SET_ORDER ) ) {
+			foreach ( $m as $row ) {
+				if ( false === stripos( $row[2], 'aria-expanded' ) ) {
+					continue;
+				}
+				$q = self::clean_qa_text( $row[5] );
+				if ( ! str_ends_with( $q, '?' ) && ! preg_match( '/^(how|what|why|when|where|who|which|is|are|can|should|does|do|will)\b/i', $q ) ) {
+					continue;
+				}
+				$id = preg_quote( $row[4], '/' );
+				if ( ! preg_match( '/<([a-z][a-z0-9]*)\b[^>]*\bid=("|\')' . $id . '\2[^>]*>(.*?)(?=<[a-z][a-z0-9]*\b[^>]*\baria-controls=|<\/section>|<\/article>|$)/is', $html, $panel ) ) {
+					continue;
+				}
+				$a = self::clean_qa_text( $panel[3] );
+				if ( self::is_valid_qa( $q, $a ) ) {
+					$pairs[] = array( 'q' => $q, 'a' => mb_substr( $a, 0, 1000 ) );
+				}
 			}
 		}
 
@@ -384,6 +479,23 @@ class AEOMATIC_Content_Extractor {
 		return $pairs;
 	}
 
+	/** All text-bearing settings in an Elementor node and its children. */
+	private static function elementor_node_text( array $node ): string {
+		$text     = '';
+		$settings = is_array( $node['settings'] ?? null ) ? $node['settings'] : array();
+		foreach ( array( 'title', 'editor', 'text', 'description', 'content', 'heading_text' ) as $key ) {
+			if ( isset( $settings[ $key ] ) && is_string( $settings[ $key ] ) ) {
+				$text .= ' ' . $settings[ $key ];
+			}
+		}
+		foreach ( (array) ( $node['elements'] ?? array() ) as $child ) {
+			if ( is_array( $child ) ) {
+				$text .= ' ' . self::elementor_node_text( $child );
+			}
+		}
+		return $text;
+	}
+
 	private static function walk_elementor_for_faqs( array $nodes, array &$pairs ): void {
 		foreach ( $nodes as $node ) {
 			if ( ! is_array( $node ) ) {
@@ -399,6 +511,22 @@ class AEOMATIC_Content_Extractor {
 						}
 						$q = self::clean_qa_text( $tab['tab_title'] ?? '' );
 						$a = self::clean_qa_text( $tab['tab_content'] ?? '' );
+						if ( self::is_valid_qa( $q, $a ) ) {
+							$pairs[] = array( 'q' => $q, 'a' => $a );
+						}
+					}
+				}
+				// Nested accordion (Elementor 3.15+ default): settings.items[]
+				// holds the titles and each answer is the matching child
+				// container, so its text is gathered from the child's widgets.
+				if ( ! empty( $settings['items'] ) && is_array( $settings['items'] ) && ! empty( $node['elements'] ) && is_array( $node['elements'] ) ) {
+					foreach ( array_values( $settings['items'] ) as $i => $item ) {
+						$child = $node['elements'][ $i ] ?? null;
+						if ( ! is_array( $item ) || ! is_array( $child ) ) {
+							continue;
+						}
+						$q = self::clean_qa_text( $item['item_title'] ?? '' );
+						$a = self::clean_qa_text( self::elementor_node_text( $child ) );
 						if ( self::is_valid_qa( $q, $a ) ) {
 							$pairs[] = array( 'q' => $q, 'a' => $a );
 						}
@@ -619,9 +747,9 @@ class AEOMATIC_Content_Extractor {
 	/**
 	 * Deduplicate FAQ pairs by lower-cased trimmed question text. Keeps the
 	 * first occurrence (which is also the highest-confidence source given the
-	 * extractor ordering).
+	 * extractor ordering). Public so the live page check can reuse it.
 	 */
-	private static function dedup_faqs( array $pairs ): array {
+	public static function dedup_faqs( array $pairs ): array {
 		$seen = array();
 		$out  = array();
 		foreach ( $pairs as $p ) {

@@ -27,6 +27,7 @@ class AEOMATIC_Gap_Answer_Shape {
 		$gaps = array();
 
 		if ( $r = $this->rule_no_opening_answer( $extract ) )                    { $gaps[] = $r; }
+		if ( $r = $this->rule_buried_answers( $post ) )                          { $gaps[] = $r; }
 		if ( $r = $this->rule_no_question_heading( $extract ) )                  { $gaps[] = $r; }
 		if ( $r = $this->rule_no_faq_block( $post, $extract ) )                  { $gaps[] = $r; }
 		if ( $r = $this->rule_schema_type_mismatch( $post ) )                    { $gaps[] = $r; }
@@ -34,11 +35,66 @@ class AEOMATIC_Gap_Answer_Shape {
 		if ( $r = $this->rule_no_citation_hook( $extract ) )                     { $gaps[] = $r; }
 		if ( $r = $this->rule_missing_author_signal( $post ) )                   { $gaps[] = $r; }
 		if ( $r = $this->rule_missing_meta_description( $post ) )                { $gaps[] = $r; }
-		if ( $r = $this->rule_faq_content_without_schema( $post, $extract ) )    { $gaps[] = $r; }
-		if ( $r = $this->rule_howto_content_without_schema( $post, $extract ) )  { $gaps[] = $r; }
+		if ( $r = $this->rule_faq_answers_not_snippet_ready( $extract ) )        { $gaps[] = $r; }
+		if ( $r = $this->rule_steps_not_in_ordered_list( $post, $extract ) )     { $gaps[] = $r; }
 		if ( $r = $this->rule_missing_from_llms_txt( $post ) )                   { $gaps[] = $r; }
 
 		return $gaps;
+	}
+
+	/**
+	 * Answers that sit below filler under a question heading (or a question
+	 * title). One-click fix moves them up on block and classic editor posts.
+	 */
+	private function rule_buried_answers( WP_Post $post ): ?AEOMATIC_Gap_Result {
+		if ( ! class_exists( 'AEOMATIC_Answer_First' ) ) {
+			return null;
+		}
+		$findings = AEOMATIC_Answer_First::find( $post );
+		if ( empty( $findings ) ) {
+			return null;
+		}
+
+		$first = $findings[0];
+		$hint  = sprintf(
+			/* translators: 1: question heading, 2: sentence number, 3: the answer sentence */
+			__( 'Under "%1$s" the answer is sentence %2$d: "%3$s" Put the direct answer first; AI assistants tend to quote the first clear sentence after a question.', 'aeomatic' ),
+			$first['question'],
+			$first['position'],
+			$first['answer_clean']
+		);
+		if ( count( $findings ) > 1 ) {
+			$hint .= ' ' . sprintf(
+				/* translators: %d: number of other sections */
+				_n( '%d more section has the same issue.', '%d more sections have the same issue.', count( $findings ) - 1, 'aeomatic' ),
+				count( $findings ) - 1
+			);
+		}
+
+		$fix_action = null;
+		if ( AEOMATIC_Answer_First::can_apply( $post ) ) {
+			$fix_action = array(
+				'code'   => 'move_answers_up',
+				'label'  => _n( 'Move the answer up', 'Move answers up', count( $findings ), 'aeomatic' ),
+				'params' => array(),
+			);
+		} else {
+			$hint .= ' ' . __( 'This page is built with a page builder, so move the sentence in the builder yourself.', 'aeomatic' );
+		}
+
+		return new AEOMATIC_Gap_Result(
+			'buried_answer',
+			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
+			sprintf(
+				/* translators: %d: number of buried answers */
+				_n( '%d answer is buried below its question', '%d answers are buried below their questions', count( $findings ), 'aeomatic' ),
+				count( $findings )
+			),
+			$hint,
+			'buried-answer',
+			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE,
+			$fix_action
+		);
 	}
 
 	private function rule_no_opening_answer( array $extract ): ?AEOMATIC_Gap_Result {
@@ -64,7 +120,7 @@ class AEOMATIC_Gap_Answer_Shape {
 			'no_opening_answer',
 			AEOMATIC_Gap_Result::SEVERITY_HIGH,
 			__( 'No direct opening answer in the first 300 characters', 'aeomatic' ),
-			__( 'Lead with a single declarative sentence that answers the implied question. AI engines pull citations from opening definitions far more often than from paragraphs of preamble.', 'aeomatic' ),
+			__( 'Lead with a single declarative sentence that answers the implied question. AI assistants read the visible text, and a clear opening answer is the easiest part to quote.', 'aeomatic' ),
 			'opening-answer',
 			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE
 		);
@@ -108,7 +164,7 @@ class AEOMATIC_Gap_Answer_Shape {
 			'no_faq_block',
 			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
 			__( 'No FAQ block on this page', 'aeomatic' ),
-			__( 'Add an AEOmatic FAQ block with 3–5 real user questions and short direct answers. FAQPage schema is one of the most-cited structured data types in AI answers.', 'aeomatic' ),
+			__( 'Add an AEOmatic FAQ block with 3–5 real user questions, each with a direct 40–50 word answer. Short, visible Q&A is what featured snippets and AI answers quote.', 'aeomatic' ),
 			'faq-block',
 			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE
 		);
@@ -191,7 +247,7 @@ class AEOMATIC_Gap_Answer_Shape {
 				$total,
 				(int) round( $coverage * 100 )
 			),
-			__( 'Add descriptive alt text to every content image. Multimodal AI engines read alt attributes when deciding whether an image (and the page hosting it) is citation-worthy.', 'aeomatic' ),
+			__( 'Add descriptive alt text to every content image. Alt text is the only description of an image that text-only crawlers can read.', 'aeomatic' ),
 			'alt-coverage',
 			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE
 		);
@@ -223,7 +279,7 @@ class AEOMATIC_Gap_Answer_Shape {
 			'no_citation_hook',
 			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
 			__( 'No lists, tables, or bold summaries near the top', 'aeomatic' ),
-			__( 'Add a bullet list, numbered list, comparison table, or bold summary line within the first 500 words. AI engines lift these structural chunks directly into answer snippets.', 'aeomatic' ),
+			__( 'Add a bullet list, numbered list, comparison table, or bold summary line within the first 500 words. Self-contained chunks like these are easy to lift into an answer.', 'aeomatic' ),
 			'citation-hook',
 			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE
 		);
@@ -281,7 +337,7 @@ class AEOMATIC_Gap_Answer_Shape {
 			'missing_meta_description',
 			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
 			__( 'No meta description set', 'aeomatic' ),
-			__( 'Add a 120–160 character summary in your SEO plugin (Yoast, Rank Math, AIOSEO, SEOPress) or write a post excerpt of at least 80 characters. AI engines quote meta descriptions verbatim when generating answer snippets.', 'aeomatic' ),
+			__( 'Add a 120–160 character summary in your SEO plugin (Yoast, Rank Math, AIOSEO, SEOPress) or write a post excerpt of at least 80 characters. Without one, search and AI engines pick their own summary of the page.', 'aeomatic' ),
 			'meta-description',
 			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE,
 			array(
@@ -292,85 +348,74 @@ class AEOMATIC_Gap_Answer_Shape {
 		);
 	}
 
-	private function rule_faq_content_without_schema( WP_Post $post, array $extract ): ?AEOMATIC_Gap_Result {
+	/**
+	 * FAQ markup no longer produces anything in Google Search, so what
+	 * matters is the visible HTML featured snippets read: a question heading
+	 * with a direct answer of roughly 40–50 words beneath it. Flags pages
+	 * whose question headings are followed by answers far from that length.
+	 */
+	private function rule_faq_answers_not_snippet_ready( array $extract ): ?AEOMATIC_Gap_Result {
 		$html = (string) ( $extract['html'] ?? '' );
 		if ( '' === $html ) {
 			return null;
 		}
-
-		// Skip if we already emit FAQPage schema (the base plugin does this
-		// when the FAQ block is present or when the schema type is FAQPage).
-		$schema_type = 'Article';
-		if ( class_exists( 'AEOMATIC_Schema_Analyzer' ) ) {
-			$analysis    = AEOMATIC_Schema_Analyzer::analyze( $post );
-			$schema_type = (string) ( $analysis['type'] ?? 'Article' );
-		}
-		if ( 'FAQPage' === $schema_type || 'QAPage' === $schema_type ) {
+		if ( ! preg_match_all( '/<h[2-4][^>]*>([^<]*\?)\s*<\/h[2-4]>(.*?)(?=<h[1-6][\s>]|$)/is', $html, $m, PREG_SET_ORDER ) ) {
 			return null;
 		}
-		$faqs = $extract['faqs'] ?? array();
-		if ( is_array( $faqs ) && count( $faqs ) >= 2 ) {
-			return null; // The FAQ block itself emits FAQPage schema.
+
+		$questions = 0;
+		$off       = 0;
+		foreach ( $m as $section ) {
+			$questions++;
+			// The first paragraph is the answer a snippet would lift.
+			$first = preg_match( '/<p[^>]*>(.*?)<\/p>/is', $section[2], $p ) ? $p[1] : $section[2];
+			$words = str_word_count( wp_strip_all_tags( $first ) );
+			if ( $words < 25 || $words > 70 ) {
+				$off++;
+			}
 		}
 
-		// Look for FAQ-shaped content that isn't a FAQ block:
-		// - 3+ headings ending in "?"
-		// - or a <details>/<summary> pattern with 2+ items
-		$question_headings = 0;
-		if ( preg_match_all( '/<h[2-4][^>]*>[^<]*\?\s*<\/h[2-4]>/i', $html, $m ) ) {
-			$question_headings = count( $m[0] );
-		}
-		$details_count = 0;
-		if ( preg_match_all( '/<details[\s>]/i', $html, $m ) ) {
-			$details_count = count( $m[0] );
-		}
-
-		if ( $question_headings < 3 && $details_count < 2 ) {
+		if ( $questions < 2 || $off * 2 < $questions ) {
 			return null;
 		}
 
 		return new AEOMATIC_Gap_Result(
-			'faq_content_without_schema',
-			AEOMATIC_Gap_Result::SEVERITY_HIGH,
-			__( 'FAQ-shaped content without FAQPage schema', 'aeomatic' ),
-			__( 'This page has multiple question-style headings but no FAQPage schema. Convert the Q&A section to an AEOmatic FAQ block, or override the schema type to FAQPage from the AEOmatic sidebar. FAQPage is one of the most-cited schema types in AI answers.', 'aeomatic' ),
-			'faq-without-schema',
-			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE,
-			array(
-				'code'   => 'set_schema_type',
-				'label'  => __( 'Set schema type to FAQPage', 'aeomatic' ),
-				'params' => array( 'type' => 'FAQPage' ),
-			)
+			'faq_answers_not_snippet_ready',
+			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
+			__( 'Question headings without a snippet-length answer', 'aeomatic' ),
+			sprintf(
+				/* translators: 1: questions with off-length answers, 2: question headings found */
+				__( '%1$d of %2$d question headings are not followed by a short direct answer. Put a 40–50 word answer in the first paragraph under each question — that visible text is what featured snippets and AI answers quote. FAQ schema no longer produces a Google result.', 'aeomatic' ),
+				$off,
+				$questions
+			),
+			'faq-answers',
+			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE
 		);
 	}
 
-	private function rule_howto_content_without_schema( WP_Post $post, array $extract ): ?AEOMATIC_Gap_Result {
+	/**
+	 * HowTo markup was retired in 2023. List snippets read real <ol>
+	 * elements, so a step-by-step page whose steps are not in an ordered
+	 * list is the gap worth naming.
+	 */
+	private function rule_steps_not_in_ordered_list( WP_Post $post, array $extract ): ?AEOMATIC_Gap_Result {
 		$html = (string) ( $extract['html'] ?? '' );
 		$text = (string) ( $extract['text'] ?? '' );
 		if ( '' === $html ) {
 			return null;
 		}
 
-		$schema_type = 'Article';
-		if ( class_exists( 'AEOMATIC_Schema_Analyzer' ) ) {
-			$analysis    = AEOMATIC_Schema_Analyzer::analyze( $post );
-			$schema_type = (string) ( $analysis['type'] ?? 'Article' );
-		}
-		if ( 'HowTo' === $schema_type || 'Recipe' === $schema_type ) {
-			return null;
-		}
-
-		// HowTo signals: an <ol> with 3+ <li>, or step-language in the text.
-		$has_numbered_list = false;
+		// Already an <ol> with 3+ steps — nothing to fix.
 		if ( preg_match_all( '/<ol[\s>][\s\S]*?<\/ol>/i', $html, $m ) ) {
 			foreach ( $m[0] as $ol ) {
-				$li_count = preg_match_all( '/<li[\s>]/i', $ol );
-				if ( $li_count >= 3 ) {
-					$has_numbered_list = true;
-					break;
+				if ( preg_match_all( '/<li[\s>]/i', $ol ) >= 3 ) {
+					return null;
 				}
 			}
 		}
+
+		$step_headings = preg_match_all( '/<h[2-4][^>]*>\s*(step\s*\d+|\d+[\.\)])/i', $html );
 		$has_step_language = (bool) preg_match(
 			'/\b(step\s*\d+|step\s+one|step\s+two|first[,:]|next[,:]|then[,:]|finally[,:])\b/i',
 			$text
@@ -378,23 +423,18 @@ class AEOMATIC_Gap_Answer_Shape {
 		$title_signals = (bool) preg_match( '/\b(how to|how do i|guide|tutorial|walkthrough)\b/i', (string) $post->post_title );
 
 		// Need at least two of three signals to flag with confidence.
-		$score = ( $has_numbered_list ? 1 : 0 ) + ( $has_step_language ? 1 : 0 ) + ( $title_signals ? 1 : 0 );
+		$score = ( $step_headings >= 3 ? 1 : 0 ) + ( $has_step_language ? 1 : 0 ) + ( $title_signals ? 1 : 0 );
 		if ( $score < 2 ) {
 			return null;
 		}
 
 		return new AEOMATIC_Gap_Result(
-			'howto_content_without_schema',
-			AEOMATIC_Gap_Result::SEVERITY_HIGH,
-			__( 'HowTo-shaped content without HowTo schema', 'aeomatic' ),
-			__( 'This page reads like a step-by-step guide but does not emit HowTo schema. Override the schema type to HowTo from the AEOmatic sidebar. HowTo schema surfaces your steps directly in AI answers and Google rich results.', 'aeomatic' ),
-			'howto-without-schema',
-			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE,
-			array(
-				'code'   => 'set_schema_type',
-				'label'  => __( 'Set schema type to HowTo', 'aeomatic' ),
-				'params' => array( 'type' => 'HowTo' ),
-			)
+			'steps_not_in_ordered_list',
+			AEOMATIC_Gap_Result::SEVERITY_MEDIUM,
+			__( 'Steps are not in a numbered list', 'aeomatic' ),
+			__( 'This page reads like a step-by-step guide, but the steps are not in a real numbered list. Put them in a List block set to "Ordered" (an <ol>) — list snippets favour genuine ordered lists over styled headings or divs.', 'aeomatic' ),
+			'ordered-steps',
+			AEOMATIC_Gap_Result::SOURCE_ANSWER_SHAPE
 		);
 	}
 

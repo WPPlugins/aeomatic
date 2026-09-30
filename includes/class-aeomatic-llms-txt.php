@@ -39,7 +39,10 @@ class AEOMATIC_LLMs_Txt {
 	public function register(): void {
 		add_action( 'init', array( __CLASS__, 'register_rewrites' ) );
 		add_filter( 'query_vars', array( $this, 'add_query_var' ) );
-		add_action( 'template_redirect', array( $this, 'maybe_serve' ) );
+		// Priority 0 so the endpoint is served before redirect_canonical (priority 10)
+		// can append a trailing slash and 301 /llms.txt to /llms.txt/.
+		add_action( 'template_redirect', array( $this, 'maybe_serve' ), 0 );
+		add_filter( 'redirect_canonical', array( $this, 'skip_canonical_redirect' ) );
 
 		// Both rendered bodies list every published item, so a publish, update,
 		// delete, or menu change can invalidate them. Drop the cache on those
@@ -94,6 +97,31 @@ class AEOMATIC_LLMs_Txt {
 		return $vars;
 	}
 
+	/**
+	 * Never canonical-redirect the llms endpoints (e.g. /llms.txt → /llms.txt/).
+	 *
+	 * @param string|false $redirect_url Proposed redirect.
+	 * @return string|false
+	 */
+	public function skip_canonical_redirect( $redirect_url ) {
+		if ( 1 === (int) get_query_var( self::QUERY_VAR ) || 1 === (int) get_query_var( self::QUERY_VAR_FULL ) ) {
+			return false;
+		}
+		return $redirect_url;
+	}
+
+	/**
+	 * Convert a rendered body to clean plain text: no tags, no HTML entities.
+	 *
+	 * The endpoints are served as text/plain with nosniff, so HTML escaping is
+	 * not needed for safety and would corrupt the Markdown (a "> summary" line
+	 * became "&gt; summary", apostrophes became "&#8217;").
+	 */
+	public static function to_plain_text( string $body ): string {
+		$body = wp_strip_all_tags( $body, false );
+		return html_entity_decode( $body, ENT_QUOTES | ENT_HTML5, 'UTF-8' );
+	}
+
 	public function maybe_serve(): void {
 		$is_full = (int) get_query_var( self::QUERY_VAR_FULL ) === 1;
 		$is_txt  = (int) get_query_var( self::QUERY_VAR ) === 1;
@@ -111,6 +139,7 @@ class AEOMATIC_LLMs_Txt {
 
 		header( 'Content-Type: text/plain; charset=utf-8' );
 		header( 'X-Robots-Tag: noindex' );
+		header( 'X-Content-Type-Options: nosniff' );
 		header( 'Cache-Control: public, max-age=' . (int) self::CACHE_TTL );
 		// The endpoint is intentionally world-readable. Online validators and
 		// AI clients fetch it via browser fetch(), which requires CORS.
@@ -119,12 +148,14 @@ class AEOMATIC_LLMs_Txt {
 
 		if ( $is_full ) {
 			AEOMATIC_Activity::bump( 'llms_full_serves' );
-			echo wp_kses( self::cached_body( self::CACHE_KEY_FULL, fn(): string => $this->build_full_content( $settings ) ), array() );
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- text/plain + nosniff; tags stripped in to_plain_text().
+			echo self::to_plain_text( self::cached_body( self::CACHE_KEY_FULL, fn(): string => $this->build_full_content( $settings ) ) );
 			exit;
 		}
 
 		AEOMATIC_Activity::bump( 'llms_serves' );
-		echo wp_kses( self::cached_body( self::CACHE_KEY, fn(): string => $this->build_content( $settings ) ), array() );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- text/plain + nosniff; tags stripped in to_plain_text().
+		echo self::to_plain_text( self::cached_body( self::CACHE_KEY, fn(): string => $this->build_content( $settings ) ) );
 		exit;
 	}
 
@@ -137,7 +168,10 @@ class AEOMATIC_LLMs_Txt {
 		$tagline   = get_bloginfo( 'description' );
 
 		$out  = '# ' . $site_name . "\n\n";
-		$out .= '> ' . ( ! empty( $settings['description'] ) ? $settings['description'] : $tagline ) . "\n\n";
+		$summary = trim( (string) ( ! empty( $settings['description'] ) ? $settings['description'] : $tagline ), " \t\n\r\0\x0B" );
+		if ( '' !== $summary ) {
+			$out .= '> ' . $summary . "\n\n";
+		}
 		$out .= 'Site URL: ' . $site_url . "\n";
 		$out .= 'Full content: ' . home_url( '/llms-full.txt' ) . "\n\n";
 

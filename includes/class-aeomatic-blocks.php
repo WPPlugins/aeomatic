@@ -72,7 +72,8 @@ class AEOMATIC_Blocks {
 		wp_enqueue_script(
 			'aeob-editor-sidebar',
 			AEOMATIC_URL . 'assets/js/editor-sidebar.js',
-			array( 'aeomatic-panels', 'wp-plugins', 'wp-edit-post' ),
+			// wp-editor: the Plugin* slots moved there in WordPress 6.6.
+			array( 'aeomatic-panels', 'wp-plugins', 'wp-edit-post', 'wp-editor' ),
 			AEOMATIC_VERSION,
 			true
 		);

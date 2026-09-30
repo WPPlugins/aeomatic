@@ -35,7 +35,7 @@ class AEOMATIC_Analyzer_Authority implements AEOMATIC_Readiness_Analyzer_Interfa
 		$bio_words = $this->author_bio_words( $post );
 		if ( $bio_words < 40 ) {
 			$score -= 25;
-			$issues[]          = sprintf( __( 'Author bio has only %d words — AI engines look for named-expert depth.', 'aeomatic' ), $bio_words );
+			$issues[]          = sprintf( __( 'Author bio has only %d words. A fuller bio shows what the author knows.', 'aeomatic' ), $bio_words );
 			$recommendations[] = __( 'Expand the author bio to at least 40 words: role, credentials, and one link to a professional profile.', 'aeomatic' );
 		}
 

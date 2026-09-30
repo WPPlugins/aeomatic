@@ -18,6 +18,7 @@ class AEOMATIC_Admin {
 	const SLUG_READINESS  = 'aeomatic-ai-readiness';
 	const SLUG_ENTITY_SCAN = 'aeomatic-entity-scanner';
 	const SLUG_SETTINGS   = 'aeomatic-settings';
+	const SLUG_ACCESS     = 'aeomatic-ai-access';
 
 	public function register(): void {
 		add_action( 'admin_menu',             array( $this, 'add_menu' ) );
@@ -56,6 +57,15 @@ class AEOMATIC_Admin {
 			'manage_options',
 			self::MENU_SLUG,
 			array( $this, 'render_dashboard' )
+		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
+			__( 'AI Access — AEOmatic', 'aeomatic' ),
+			__( 'AI Access', 'aeomatic' ),
+			'manage_options',
+			self::SLUG_ACCESS,
+			array( $this, 'render_access' )
 		);
 
 		add_submenu_page(
@@ -144,6 +154,17 @@ class AEOMATIC_Admin {
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 		) );
 
+		if ( false !== strpos( $hook, self::SLUG_ACCESS ) ) {
+			wp_enqueue_script(
+				'aeob-ai-access',
+				AEOMATIC_URL . 'assets/js/ai-access.js',
+				array( 'wp-api-fetch', 'wp-i18n' ),
+				AEOMATIC_VERSION,
+				true
+			);
+			wp_set_script_translations( 'aeob-ai-access', 'aeomatic' );
+		}
+
 		if ( false !== strpos( $hook, self::SLUG_ACTIVITY ) ||
 		     false !== strpos( $hook, str_replace( '-', '_', self::SLUG_ACTIVITY ) ) ) {
 			wp_enqueue_script(
@@ -175,11 +196,23 @@ class AEOMATIC_Admin {
 		AEOMATIC_Settings::save( $input );
 		flush_rewrite_rules();
 		AEOMATIC_Activity::log( 'settings_saved', __( 'Settings updated.', 'aeomatic' ) );
+
+		/**
+		 * Fires after core settings are saved.
+		 *
+		 * @param array $input Unslashed, unsanitised form input.
+		 */
+		do_action( 'aeomatic_settings_saved', $input );
+
 		add_settings_error( 'aeomatic_messages', 'aeomatic_saved', __( 'Settings saved.', 'aeomatic' ), 'updated' );
 	}
 
 	public function render_dashboard(): void {
 		require AEOMATIC_DIR . 'admin/views/dashboard.php';
+	}
+
+	public function render_access(): void {
+		require AEOMATIC_DIR . 'admin/views/ai-access.php';
 	}
 
 	public function render_activity(): void {

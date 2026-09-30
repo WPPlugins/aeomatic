@@ -34,7 +34,7 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 		if ( $active === '' ) {
 			$score -= 30;
 			$issues[]          = __( 'No schema.org type detected or assigned for this post.', 'aeomatic' );
-			$recommendations[] = __( 'Open the Gutenberg sidebar → Schema Generator. Pick a type (Article, HowTo, FAQPage, etc.).', 'aeomatic' );
+			$recommendations[] = __( 'Open the Gutenberg sidebar → Schema Generator. Pick a type (Article, Product, Event, etc.).', 'aeomatic' );
 		} else {
 			if ( $assigned !== '' && $detected !== '' && $assigned !== $detected ) {
 				$score -= 20;
@@ -46,7 +46,7 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 		if ( ! $this->has_named_entities( $post ) ) {
 			$score -= 25;
 			$issues[]          = __( 'Body has few named entities (people, places, organisations, dates).', 'aeomatic' );
-			$recommendations[] = __( 'Name specific people, companies, tools, or dates. AI engines index around entities, not adjectives.', 'aeomatic' );
+			$recommendations[] = __( 'Name specific people, companies, tools, or dates. Specific names are clearer to readers and engines than general adjectives.', 'aeomatic' );
 		}
 
 		if ( ! $this->schema_has_about( $post ) ) {

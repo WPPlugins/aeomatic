@@ -3,10 +3,13 @@
  * Detects FAQ entity coverage.
  *
  * Signals (weights sum to 100):
- *   - Schema type is FAQPage / QAPage      (40)
- *   - AEOmatic FAQ block present in body   (30)
- *   - Question-style headings              (20)
- *   - FAQ-context section heading          (10)
+ *   - FAQ block, accordion or Q&A pattern  (50)
+ *   - Question-style headings              (35)
+ *   - FAQ-context section heading          (15)
+ *
+ * FAQPage markup is not a signal: Google discontinued the FAQ result in
+ * May 2026, and what featured snippets and AI answers read is the visible
+ * question-and-answer HTML.
  *
  * @package AEOmatic
  */
@@ -23,26 +26,18 @@ class AEOMATIC_Detector_Faq implements AEOMATIC_Entity_Detector_Interface {
 		$missing        = array();
 		$recommendations = array();
 
-		if ( $signals->has_schema_type( 'FAQPage' ) || $signals->has_schema_type( 'QAPage' ) ) {
-			$score += 40;
-			$found[] = __( 'Schema type is FAQPage or QAPage.', 'aeomatic' );
-		} else {
-			$missing[]         = __( 'No FAQPage / QAPage schema.', 'aeomatic' );
-			$recommendations[] = __( 'On pages with Q&A structure, set schema type to FAQPage so AI engines can quote answers.', 'aeomatic' );
-		}
-
 		if ( $signals->has_faq_block() ) {
-			$score += 30;
+			$score += 50;
 			$found[] = __( 'FAQ content detected in body.', 'aeomatic' );
 		} else {
 			$missing[]         = __( 'No FAQ block, accordion, or Q&A pattern in body.', 'aeomatic' );
 			$recommendations[] = $signals->is_block_editor()
-				? __( 'Insert the AEOmatic FAQ block — it auto-generates FAQPage schema and improves citation odds.', 'aeomatic' )
+				? __( 'Insert the AEOmatic FAQ block with short, direct answers — that visible Q&A is what snippets and AI answers quote.', 'aeomatic' )
 				: $this->builder_faq_hint( $signals->builder() );
 		}
 
 		if ( $signals->has_question_heading() ) {
-			$score += 20;
+			$score += 35;
 			$found[] = __( 'Question-style heading(s) detected.', 'aeomatic' );
 		} else {
 			$missing[]         = __( 'No question-style headings.', 'aeomatic' );
@@ -50,14 +45,17 @@ class AEOMATIC_Detector_Faq implements AEOMATIC_Entity_Detector_Interface {
 		}
 
 		if ( $signals->has_heading_keyword( array( 'faq', 'frequently asked', 'questions', 'q&a' ) ) ) {
-			$score += 10;
+			$score += 15;
 			$found[] = __( 'FAQ-context section heading detected.', 'aeomatic' );
 		} else {
 			$missing[]         = __( 'No FAQ-context section heading.', 'aeomatic' );
 			$recommendations[] = __( 'Group Q&As under an H2 titled "FAQ" or "Frequently Asked Questions".', 'aeomatic' );
 		}
 
-		$detected = $score >= AEOMATIC_Entity_Scanner::detected_threshold();
+		// Real Q&A pairs from any source — block, shortcode, builder accordion,
+		// theme or the live page — mean the page has an FAQ, whatever the
+		// heading signals say.
+		$detected = $signals->has_faq_block() || $score >= AEOMATIC_Entity_Scanner::detected_threshold();
 		return new AEOMATIC_Entity_Detection_Result( 'faq', $detected, $score, $found, $missing, $recommendations );
 	}
 
@@ -70,17 +68,17 @@ class AEOMATIC_Detector_Faq implements AEOMATIC_Entity_Detector_Interface {
 	private function builder_faq_hint( string $builder ): string {
 		switch ( $builder ) {
 			case 'elementor':
-				return __( 'Add an Elementor Toggle or Accordion widget with your Q&As — AEOmatic will detect it and emit FAQPage schema.', 'aeomatic' );
+				return __( 'Add an Elementor Toggle or Accordion widget with your Q&As. Keep each answer to a direct 40–50 words.', 'aeomatic' );
 			case 'divi':
-				return __( 'Add a Divi Toggle or Accordion module with your Q&As — AEOmatic will detect it and emit FAQPage schema.', 'aeomatic' );
+				return __( 'Add a Divi Toggle or Accordion module with your Q&As. Keep each answer to a direct 40–50 words.', 'aeomatic' );
 			case 'wpbakery':
-				return __( 'Add a WPBakery Toggle or Accordion element with your Q&As — AEOmatic will detect it and emit FAQPage schema.', 'aeomatic' );
+				return __( 'Add a WPBakery Toggle or Accordion element with your Q&As. Keep each answer to a direct 40–50 words.', 'aeomatic' );
 			case 'beaver':
 			case 'bricks':
 			case 'oxygen':
-				return __( 'Add an accordion / toggle module in your builder with your Q&As. AEOmatic will detect the Q&A structure and emit FAQPage schema.', 'aeomatic' );
+				return __( 'Add an accordion / toggle module in your builder with your Q&As. Keep each answer to a direct 40–50 words.', 'aeomatic' );
 			default:
-				return __( 'Add an ACF FAQ repeater, an accordion module, or Q&A headings. AEOmatic will detect the structure and emit FAQPage schema.', 'aeomatic' );
+				return __( 'Add an ACF FAQ repeater, an accordion module, or Q&A headings. Keep each answer to a direct 40–50 words.', 'aeomatic' );
 		}
 	}
 }

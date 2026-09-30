@@ -133,7 +133,8 @@ class AEOMATIC_AI_Readiness {
 			'cached'        => false,
 		);
 
-		update_post_meta( $post->ID, self::META_RESULT, wp_json_encode( $payload ) );
+		// wp_slash: update_post_meta() unslashes, which would corrupt the JSON's escapes.
+		update_post_meta( $post->ID, self::META_RESULT, wp_slash( wp_json_encode( $payload ) ) );
 		update_post_meta( $post->ID, self::META_FINGERPRINT, $fingerprint );
 		update_post_meta( $post->ID, self::META_SCORE, $overall );
 

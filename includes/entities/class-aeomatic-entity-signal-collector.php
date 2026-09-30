@@ -140,7 +140,10 @@ final class AEOMATIC_Entity_Signal_Collector {
 		return stripos( $active, $ancestor ) !== false;
 	}
 
-	public function schema_override( string $key ): mixed {
+	/**
+	 * @return mixed
+	 */
+	public function schema_override( string $key ) {
 		return $this->schema_overrides[ $key ] ?? null;
 	}
 

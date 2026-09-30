@@ -21,6 +21,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  *   AEOMATIC_Conflict_Detector::NOTICE_DISMISSED_KEY
  *   AEOMATIC_Wizard::COMPLETED_KEY
  *   AEOMATIC_Admin review-notice flags
+ *   AEOMATIC_AI_Access::RESULTS_OPTION / TOKEN_OPTION
  */
 $aeomatic_options = array(
 	'aeomatic_settings',
@@ -32,6 +33,8 @@ $aeomatic_options = array(
 	'aeomatic_crawler_log_entries',
 	'aeomatic_crawler_log_stats',
 	'aeomatic_wizard_completed',
+	'aeomatic_ai_access_results',
+	'aeomatic_ai_access_token',
 );
 foreach ( $aeomatic_options as $aeomatic_option ) {
 	delete_option( $aeomatic_option );
@@ -67,6 +70,7 @@ wp_clear_scheduled_hook( 'aeomatic_crawler_log_purge' );
  */
 $aeomatic_meta_keys = array(
 	'_aeomatic_score',
+	'_aeomatic_live_scan',
 	'_aeomatic_score_breakdown',
 	'_aeomatic_schema_type',
 	'_aeomatic_schema_analysis',
@@ -79,6 +83,7 @@ $aeomatic_meta_keys = array(
 	'_aeomatic_citation_gaps',
 	'_aeomatic_citation_gaps_fingerprint',
 	'_aeomatic_citation_gaps_score',
+	'_aeomatic_citation_gaps_fingerprint_at',
 	'_aeomatic_entity_scan',
 	'_aeomatic_entity_scan_fingerprint',
 	'_aeomatic_entity_coverage',

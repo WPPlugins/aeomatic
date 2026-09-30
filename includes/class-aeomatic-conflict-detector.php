@@ -70,7 +70,7 @@ class AEOMATIC_Conflict_Detector {
 		if ( defined( 'AIOSEO_VERSION' ) || class_exists( 'AIOSEO\Plugin\AIOSEO' ) ) {
 			$found['aioseo'] = array(
 				'name'      => 'All in One SEO',
-				'conflicts' => array( 'article', 'breadcrumb', 'organization', 'author', 'faq' ),
+				'conflicts' => array( 'article', 'breadcrumb', 'organization', 'author' ),
 				'doc_url'   => 'https://aioseo.com/docs/schema-markup/',
 			);
 		}
@@ -128,7 +128,6 @@ class AEOMATIC_Conflict_Detector {
 	 *   • organization  — only if company_or_person resolves to company/person
 	 *                     AND at least one schema-page-type-* is a real type
 	 *   • author        — same trigger as article
-	 *   • faq           — only if Yoast FAQ block class exists
 	 *
 	 * @return string[]
 	 */
@@ -176,10 +175,6 @@ class AEOMATIC_Conflict_Detector {
 			$conflicts[] = 'breadcrumb';
 		}
 
-		if ( class_exists( 'WPSEO_Schema_FAQ_Section' ) ) {
-			$conflicts[] = 'faq';
-		}
-
 		return array_values( array_unique( $conflicts ) );
 	}
 
@@ -199,7 +194,7 @@ class AEOMATIC_Conflict_Detector {
 		if ( ! $schema_on ) {
 			return array();
 		}
-		return array( 'article', 'breadcrumb', 'organization', 'author', 'faq', 'howto' );
+		return array( 'article', 'breadcrumb', 'organization', 'author' );
 	}
 
 	/**
@@ -266,8 +261,6 @@ class AEOMATIC_Conflict_Detector {
 			'breadcrumb'   => 'Breadcrumb',
 			'organization' => 'Organization',
 			'author'       => 'Author',
-			'faq'          => 'FAQ',
-			'howto'        => 'HowTo',
 		);
 		$conflict_labels = array_filter(
 			array_map( static fn( $k ) => $labels[ $k ] ?? null, $conflicted )

@@ -115,7 +115,7 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 				<a href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">
 					https://search.google.com/test/rich-results
 				</a>
-				<p><?php esc_html_e( 'Paste any post URL. Google should detect Article (and possibly FAQ, HowTo, Breadcrumb) schema as eligible for rich results.', 'aeomatic' ); ?></p>
+				<p><?php esc_html_e( 'Paste any post URL to check that its structured data is valid.', 'aeomatic' ); ?></p>
 			</li>
 			<li>
 				<strong><?php esc_html_e( 'Open a post in the editor', 'aeomatic' ); ?></strong>

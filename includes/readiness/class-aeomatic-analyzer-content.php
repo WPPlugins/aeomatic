@@ -38,7 +38,7 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 
 		if ( $words < self::MIN_WORDS ) {
 			$score -= 25;
-			$issues[]          = sprintf( __( 'Body is only %d words; AI engines rarely cite bodies under 300 words.', 'aeomatic' ), $words );
+			$issues[]          = sprintf( __( 'Body is only %d words. Pages under 300 words give AI assistants little to quote.', 'aeomatic' ), $words );
 			$recommendations[] = __( 'Expand the post with a definition, one worked example, and one counter-example.', 'aeomatic' );
 		}
 
@@ -51,7 +51,7 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 		if ( ! $this->has_faq_structure( $html ) ) {
 			$score -= 15;
 			$issues[]          = __( 'No FAQ block or question-style headings detected.', 'aeomatic' );
-			$recommendations[] = __( 'Add 3-5 Q&A pairs near the end of the post — AI engines quote question headings verbatim.', 'aeomatic' );
+			$recommendations[] = __( 'Add 3-5 Q&A pairs near the end of the post. Short questions with direct answers are easy for AI assistants to quote.', 'aeomatic' );
 		}
 
 		if ( ! $this->has_numeric_anchors( $text ) ) {

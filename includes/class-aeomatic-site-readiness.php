@@ -367,13 +367,37 @@ class AEOMATIC_Site_Readiness {
 			admin_url( 'options-reading.php' )
 		);
 
+		// Live results from AI Access → Crawler check, when it has been run.
+		// A crawler blocked in practice (firewall, CDN, robots.txt file) matters
+		// more than what the settings say, so it fails this category too.
+		$live_blocked = array();
+		if ( class_exists( 'AEOMATIC_AI_Access' ) ) {
+			$live = AEOMATIC_AI_Access::summary();
+			if ( $live['has_results'] ) {
+				$live_blocked = $live['blocked'];
+				$checks[]     = self::check(
+					'live_access',
+					__( 'AI answer and search crawlers can reach your pages (live check)', 'aeomatic' ),
+					empty( $live_blocked ),
+					$live_blocked
+						? sprintf(
+							/* translators: %s: comma-separated crawler names */
+							__( 'Blocked in the last live check: %s. Open AI Access to see why.', 'aeomatic' ),
+							implode( ', ', $live_blocked )
+						)
+						: '',
+					admin_url( 'admin.php?page=' . AEOMATIC_Admin::SLUG_ACCESS )
+				);
+			}
+		}
+
 		// Score on the share of configured crawlers allowed, so the number
 		// reflects the user's own choices rather than a target we impose.
 		$score = $total > 0 ? (int) round( ( $allowed / $total ) * 100 ) : 100;
 
 		// A blocked retrieval crawler matters more than a blocked training
 		// crawler, so failing that check caps the category.
-		if ( ! empty( $blocked_retrieval ) ) {
+		if ( ! empty( $blocked_retrieval ) || ! empty( $live_blocked ) ) {
 			$score = min( $score, 60 );
 		}
 		if ( ! $public ) {
@@ -448,7 +472,7 @@ class AEOMATIC_Site_Readiness {
 	 * Ordered by the category with the lowest score, so the dashboard points at
 	 * the weakest axis instead of an arbitrary list.
 	 *
-	 * @return array<int,array{title:string,detail:string,url:string}>
+	 * @return array<int,array{key:string,title:string,detail:string,url:string}>
 	 */
 	private static function top_recommendations( array $categories ): array {
 		$ranked = array_filter( $categories, static function ( $c ) { return null !== $c['score']; } );
@@ -461,6 +485,7 @@ class AEOMATIC_Site_Readiness {
 					continue;
 				}
 				$out[] = array(
+					'key'    => (string) $check['key'],
 					'title'  => (string) $check['label'],
 					'detail' => (string) $check['hint'],
 					'url'    => (string) $check['url'],

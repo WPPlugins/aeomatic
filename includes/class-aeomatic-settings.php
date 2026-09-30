@@ -32,14 +32,30 @@ class AEOMATIC_Settings {
 		return array(
 			'schema'           => array(
 				'article'      => true,
-				'faq'          => true,
-				'howto'        => true,
 				'author'       => true,
 				'organization' => true,
 				'breadcrumb'   => true,
 				'org_name'     => '',
 				'org_logo'     => '',
 				'org_sameas'   => '', // newline-separated URLs
+				// Organization details. The identifiers are what entity
+				// resolution trusts most; all are optional.
+				'org_legal_name'     => '',
+				'org_alternate_name' => '',
+				'org_description'    => '',
+				'org_email'          => '',
+				'org_telephone'      => '',
+				'org_founding_date'  => '',
+				'org_street'         => '',
+				'org_city'           => '',
+				'org_region'         => '',
+				'org_postal'         => '',
+				'org_country'        => '',
+				'org_duns'           => '',
+				'org_naics'          => '',
+				'org_lei'            => '',
+				'org_vat'            => '',
+				'org_tax_id'         => '',
 			),
 			'llms_txt'         => array(
 				'enabled'      => true,
@@ -184,8 +200,23 @@ class AEOMATIC_Settings {
 			$s = $input['schema'];
 			// Checkboxes are absent from POST when unchecked, so don't guard with
 			// isset() — always write the value so unchecked boxes save as false.
-			foreach ( array( 'article', 'faq', 'howto', 'author', 'organization', 'breadcrumb' ) as $bool ) {
+			foreach ( array( 'article', 'author', 'organization', 'breadcrumb' ) as $bool ) {
 				$out['schema'][ $bool ] = ! empty( $s[ $bool ] );
+			}
+			foreach ( array(
+				'org_legal_name', 'org_alternate_name', 'org_telephone', 'org_founding_date',
+				'org_street', 'org_city', 'org_region', 'org_postal', 'org_country',
+				'org_duns', 'org_naics', 'org_lei', 'org_vat', 'org_tax_id',
+			) as $text ) {
+				if ( isset( $s[ $text ] ) ) {
+					$out['schema'][ $text ] = sanitize_text_field( $s[ $text ] );
+				}
+			}
+			if ( isset( $s['org_description'] ) ) {
+				$out['schema']['org_description'] = sanitize_textarea_field( $s['org_description'] );
+			}
+			if ( isset( $s['org_email'] ) ) {
+				$out['schema']['org_email'] = sanitize_email( $s['org_email'] );
 			}
 			if ( isset( $s['org_name'] ) ) {
 				$out['schema']['org_name'] = sanitize_text_field( $s['org_name'] );

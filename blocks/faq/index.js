@@ -24,7 +24,7 @@
 					{ className: 'aeob-faq-editor__header' },
 					el( 'strong', null, __( 'AEO FAQ', 'aeomatic' ) ),
 					el( 'span', { className: 'aeob-faq-editor__hint' },
-						__( ' — adds FAQPage schema automatically', 'aeomatic' )
+						__( ' — visible Q&As, written for featured snippets', 'aeomatic' )
 					)
 				),
 				el( InnerBlocks, {

@@ -3,12 +3,12 @@ Contributors: mmtushar
 Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
-Requires PHP: 8.0
-Stable tag: 1.2.3
+Requires PHP: 7.4
+Stable tag: 1.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AEO and AI SEO for WordPress: 22 schema types, a visual JSON-LD editor, llms.txt, and AI crawler control. Reads Elementor, Divi and ACF.
+AEO and AI SEO for WordPress: 21 schema types, a visual JSON-LD editor, llms.txt, and AI crawler control. Reads Elementor, Divi and ACF.
 
 == Description ==
 
@@ -16,7 +16,7 @@ AEO and AI SEO for WordPress: 22 schema types, a visual JSON-LD editor, llms.txt
 
 It does three jobs:
 
-1. **Publishes the signals AI systems read.** JSON-LD structured data across 22 schema types, an `llms.txt` index at your site root, a `/llms-full.txt` full-text endpoint, and per-bot crawl directives in `robots.txt`.
+1. **Publishes the signals AI systems read.** JSON-LD structured data across 21 schema types, an `llms.txt` index at your site root, a `/llms-full.txt` full-text endpoint, and per-bot crawl directives in `robots.txt`.
 2. **Scores how extractable your content is.** A site-wide AI readiness score across three categories, plus per-post audits that name the specific thing to fix rather than handing you a number.
 3. **Reports what actually happened.** A server-side log of every recognised AI crawler request — which bot, which URL, and the HTTP status your site returned. If you are quietly serving 404s to GPTBot, this is where you find out.
 
@@ -40,11 +40,18 @@ AEOmatic measures what is verifiable on your own install: whether AI crawlers ca
 
 The dashboard is labelled **AI Readiness** rather than AI Visibility, because that is what it measures — your site's preparation, not whether an engine has cited you.
 
+= Check what AI crawlers actually get =
+
+Settings pages tell you what you asked for. **AI Access** tells you what happens:
+
+* **Crawler check** — reads the robots.txt your site is really serving (including a physical file that overrides WordPress), then requests your home page and recent pages as OAI-SearchBot, ChatGPT-User, Claude-SearchBot, PerplexityBot, Googlebot, Bingbot, GPTBot, ClaudeBot and more, and compares each answer with a normal browser. A firewall, CDN or security plugin that blocks AI crawlers, a bot challenge page, or a crawler-specific noindex shows up by name.
+* **What AI sees** — ChatGPT, Claude and Perplexity crawlers do not run JavaScript. This shows the text they get for a page and lists the sentences from your editor that only appear after JavaScript runs.
+
 = Everything included, no account and no API key =
 
 * **AI readiness audit, three levels.** Site-wide across three categories (Technical readiness, Content readiness, AI crawler access), per post across five categories (Content, Trust, Authority, Entities, Technical), and a per-post 0–100 content rubric of thirteen weighted checks. Every category states whether it is a direct check or a heuristic.
 
-* **Visual schema editor for 22 types** — Article, BlogPosting, NewsArticle, TechArticle, Recipe, HowTo, FAQPage, QAPage, Review, Product, Service, LocalBusiness, Event, JobPosting, Course, Book, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage, Movie. The type is auto-detected from your content and every field is editable in the block-editor sidebar with a live JSON-LD preview.
+* **Visual schema editor for 21 types** — Article, BlogPosting, NewsArticle, TechArticle, Recipe, Review, Product, SoftwareApplication, Service, LocalBusiness, Event, JobPosting, Course, Dataset, Book, Movie, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage. Fields Google requires are marked, and every node links by @id to one Organization, WebSite and WebPage. The type is auto-detected from your content and every field is editable in the block-editor sidebar with a live JSON-LD preview.
 
 * **Type-specific property extraction** — Recipe posts get ingredients and instructions, JobPosting posts get salary ranges, Event posts get dates and venue, LocalBusiness gets address and opening hours. Not generic Article schema on everything.
 
@@ -60,11 +67,13 @@ The dashboard is labelled **AI Readiness** rather than AI Visibility, because th
 
 * **WooCommerce Product schema** — price, availability, SKU, brand, ratings and sale dates auto-filled; variable products get AggregateOffer with a min/max range.
 
-* **AI Citation Gaps** — sixteen local rules-based checks that name why a page is unlikely to be quoted: orphan pages, no opening answer, thin body, no FAQ block, no question heading, schema type mismatch, missing author signal, missing from llms.txt, low outbound links, low alt coverage, no citation hook, no related links, sibling-topic gaps by category, FAQ or HowTo content without matching schema, missing meta description. Two ship a one-click fix.
+* **Answer-first fixes** — finds answers buried below filler under a question heading ("What is X?" answered in the fourth sentence) and moves them to the top of the section in one click on block-editor and Classic posts. WordPress keeps a revision, so you can undo it.
+
+* **AI Citation Gaps** — seventeen local rules-based checks that name why a page is unlikely to be quoted: orphan pages, no opening answer, thin body, no FAQ block, no question heading, schema type mismatch, missing author signal, missing from llms.txt, low outbound links, low alt coverage, no citation hook, no related links, sibling-topic gaps by category, question headings without a snippet-length answer, steps not in a numbered list, missing meta description, buried answers. Three ship a one-click fix.
 
 * **Entity Scanner** — scans content, schema, headings and metadata for Organization, Person, Service, Product, LocalBusiness and FAQ entities, returning a coverage score with per-entity confidence, detected signals, missing signals and recommendations.
 
-* **FAQ block** — a native Q&A block producing accessible `<details>`/`<summary>` markup plus FAQPage JSON-LD. `[aeo_faq]` / `[aeo_qa]` shortcodes for the Classic Editor.
+* **FAQ block** — a native Q&A block producing accessible `<details>`/`<summary>` markup, written for featured snippets. `[aeo_faq]` / `[aeo_qa]` shortcodes for the Classic Editor.
 
 * **Setup wizard with a real first audit** — six skippable steps: welcome, import from your existing SEO plugin, organisation details, AI crawler access, **your first readiness audit**, verify. The audit step shows your score and the three highest-value fixes with direct links, so you finish onboarding knowing what to do next.
 
@@ -74,7 +83,7 @@ The dashboard is labelled **AI Readiness** rather than AI Visibility, because th
 
 * **Live verification panel** — makes HTTP requests to your own site and shows what is actually being served: llms.txt with size and line count, robots.txt with AI bot count, schema blocks on your latest post with a direct Google Rich Results Test link.
 
-* **VideoObject, Speakable, WebSite + SearchAction schema**, an author-profile panel, a wp-admin dashboard widget, and a bulk re-audit action on post list screens.
+* **VideoObject, Speakable, WebSite and WebPage schema**, an author-profile panel, a wp-admin dashboard widget, and a bulk re-audit action on post list screens.
 
 = AI crawlers recognised =
 
@@ -114,7 +123,7 @@ Schema and metadata generate server-side and cache in post meta. There are no ex
 4. Visit **AEOmatic → Dashboard** for your site AI readiness score, category breakdown, top recommendations and AI crawler activity.
 5. Open any post in the block editor and click the AEOmatic icon in the top-right toolbar for the schema editor, audit breakdown, citation gaps, AI readiness and entity coverage.
 
-**Requirements:** WordPress 6.4+, PHP 8.0+, and pretty permalinks (any structure other than "Plain").
+**Requirements:** WordPress 6.4+, PHP 7.4+, and pretty permalinks (any structure other than "Plain").
 
 You do **not** normally need to re-save permalinks after installing or updating — the plugin flushes rewrite rules on activation and again automatically when it detects a version change. If `/llms.txt` returns a 404, confirm **Settings → Permalinks** is not set to "Plain", then click **Save Changes** there once.
 
@@ -127,6 +136,14 @@ No plugin can promise that, and AEOmatic does not. What it does is fix the techn
 = What is the difference between AI readiness and AI visibility? =
 
 AI readiness is how well-prepared your site is — measurable from your own database and settings, which is what AEOmatic scores. AI visibility is whether AI systems actually surface or cite you — measurable only by querying those engines from outside your site, which AEOmatic does not do. The dashboard is labelled "AI Readiness" for that reason.
+
+= Why does the crawler check say a crawler is blocked when the crawler log shows it visiting? =
+
+The check sends requests from your own server using each crawler's name. Some firewalls also verify a crawler's IP address, so they block this test while letting the real crawler in. When the AI crawler log shows successful real visits from that crawler, the check says so and marks it for review instead of blocked.
+
+= Does the crawler check contact any AI company? =
+
+No. Every request goes to your own site. The test requests are tagged so the AI crawler log does not record them as real visits.
 
 = Does the crawler log tell me if a page was cited? =
 
@@ -158,7 +175,7 @@ Schema is generated server-side and cached in post meta. `/llms.txt` and `/llms-
 
 = What schema types does it support? =
 
-Twenty-two page-level types (Article, BlogPosting, NewsArticle, TechArticle, Recipe, HowTo, FAQPage, QAPage, Review, Product, Service, LocalBusiness, Event, JobPosting, Course, Book, Movie, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage) plus Organization, Author/Person, Breadcrumb, WebSite with SearchAction, VideoObject and Speakable.
+Twenty-one page-level types (Article, BlogPosting, NewsArticle, TechArticle, Recipe, Review, Product, SoftwareApplication, Service, LocalBusiness, Event, JobPosting, Course, Dataset, Book, Movie, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage) plus Organization, WebSite, WebPage, Author/Person, Breadcrumb, VideoObject and Speakable. FAQPage, HowTo and the sitelinks search box are not emitted: Google no longer shows them.
 
 = Does it work with WooCommerce? =
 
@@ -201,6 +218,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.4 =
+Schema now follows Google's current rules, with new SoftwareApplication and Dataset types and fuller Organization details. New AI Access screen shows whether AI crawlers can really reach your pages, and a one-click fix moves buried answers to the top of their section. Now runs on PHP 7.4. Fixes llms.txt redirects and escaping, and cached results breaking when text contained quotes. Recommended update.
+
 = 1.2.3 =
 Edit schema inside Elementor, Beaver Builder, Bricks, Divi, Oxygen and WPBakery, and a wider Gutenberg sidebar. Fixes the schema type dropdown and edited fields going blank after saving.
 
@@ -220,6 +240,31 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.4 =
+
+* **New: AI Access → Crawler check.** Requests your pages as each AI and search crawler, using the robots.txt your site actually serves, and compares the result with a normal browser visit. Flags robots.txt blocks, firewall and CDN blocks (403, 429, bot challenges), pages that return "not found" only to crawlers, stripped pages and crawler-specific noindex. Warns when a physical robots.txt file overrides AEOmatic's crawler settings, and cross-checks results with the AI crawler log.
+* **New: AI Access → What AI sees.** Shows the text a crawler that does not run JavaScript receives, the heading outline, title and description, and which sentences from the editor are missing from the HTML.
+* **New: answer-first fix.** A citation gap finds answers buried below a question heading or question-style title, and a one-click fix moves them to the top of the section on block-editor and Classic posts. A revision is saved. Page-builder pages get the suggestion only.
+* **New: SoftwareApplication and Dataset schema types.**
+* **New: Organization details in Settings** — legal name, address, contact details and registry IDs (D-U-N-S, LEI, NAICS, VAT, tax ID).
+* **New: live page check.** After you save a published post, AEOmatic loads the live page in the background. FAQs printed by your theme, templates or other plugins then count in the audit, citation gaps and entity scan, and duplicate structured data is recorded.
+* **New: citation gaps** for question headings without a short (40–50 word) answer, and for steps not in a numbered list. They replace the FAQ and HowTo schema gaps.
+* **New:** the site readiness score includes the last AI Access crawler check.
+* **Improved: schema follows Google's current required fields** for every type, and Organization, WebSite, WebPage and each post are linked into one graph.
+* **Improved: FAQs are recognised from any editor, theme or plugin** — Elementor (including nested accordions), ACF, Yoast, Rank Math, Spectra, Kadence and ARIA accordions no longer trigger "No FAQ" warnings.
+* **Improved: runs on PHP 7.4 and later** (was 8.0).
+* **Fix: /llms.txt and /llms-full.txt no longer redirect** to a trailing-slash URL.
+* **Fix: llms.txt is plain text again** — no more "&gt;" or HTML codes for apostrophes, and no empty summary line.
+* **Fix: cached results no longer break when text contains a quote mark** — citation gaps, AI readiness, entity scan, audit and saved schema field edits. Cached citation gaps could show an empty list.
+* **Fix: the "Set schema type" quick fix** always failed.
+* **Fix: "cssSelector" errors in schema validators** — Speakable now points at a paragraph that exists on the page.
+* **Fix: the AEOmatic sidebar loads on WordPress 6.6 and later.**
+* **Fix: AEOmatic's own test requests** are no longer recorded in the AI crawler log.
+* **Fix:** replaced a deprecated WordPress user query argument.
+* **Fix:** uninstall now also removes AI Access data, live page check data and a leftover citation-gap timestamp.
+* **Changed: honest wording.** Hints no longer claim that FAQ or HowTo schema, meta descriptions, author bios or freshness are proven AI citation factors.
+* **Removed: FAQPage, HowTo, Q&A page and sitelinks search box schema**, and their Settings options — Google no longer shows them. FAQ blocks still display on the page.
 
 = 1.2.3 =
 

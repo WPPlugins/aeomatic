@@ -22,7 +22,7 @@ foreach ( $post_types as $pt ) {
 
 // Authors with at least one post in enabled post types.
 $authors = get_users( array(
-	'who'                 => 'authors',
+	'capability'          => array( 'edit_posts' ),
 	'has_published_posts' => $post_types,
 	'fields'              => array( 'ID', 'display_name' ),
 	'orderby'             => 'display_name',
@@ -101,8 +101,8 @@ wp_enqueue_script( 'wp-api-fetch' );
 					<option value="no_citation_hook">No citation hook</option>
 					<option value="missing_author_signal">Missing author signal</option>
 					<option value="missing_meta_description">Missing meta description</option>
-					<option value="faq_content_without_schema">FAQ content without FAQPage schema</option>
-					<option value="howto_content_without_schema">HowTo content without HowTo schema</option>
+					<option value="faq_answers_not_snippet_ready">Question headings without a snippet-length answer</option>
+					<option value="steps_not_in_ordered_list">Steps not in a numbered list</option>
 					<option value="missing_from_llms_txt">Missing from /llms.txt</option>
 				</select>
 			</label>

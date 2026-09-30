@@ -24,15 +24,41 @@ final class AEOMATIC_Gap_Result {
 		self::SEVERITY_LOW    => 4,
 	);
 
+	/** @var string */
+	public $code;
+	/** @var string */
+	public $severity;
+	/** @var string */
+	public $title;
+	/** @var string */
+	public $fix_hint;
+	/** @var string */
+	public $doc_anchor;
+	/** @var string */
+	public $source;
+	/** @var array|null */
+	public $fix_action;
+
+	/*
+	 * Written without constructor property promotion so the class loads on PHP 7.4.
+	 */
 	public function __construct(
-		public string $code,
-		public string $severity,
-		public string $title,
-		public string $fix_hint,
-		public string $doc_anchor,
-		public string $source,
-		public ?array $fix_action = null
-	) {}
+		string $code,
+		string $severity,
+		string $title,
+		string $fix_hint,
+		string $doc_anchor,
+		string $source,
+		?array $fix_action = null
+	) {
+		$this->code       = $code;
+		$this->severity   = $severity;
+		$this->title      = $title;
+		$this->fix_hint   = $fix_hint;
+		$this->doc_anchor = $doc_anchor;
+		$this->source     = $source;
+		$this->fix_action = $fix_action;
+	}
 
 	public function to_array(): array {
 		return array(
