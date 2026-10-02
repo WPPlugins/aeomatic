@@ -567,8 +567,7 @@ class AEOMATIC_Schema {
 	/**
 	 * Breadcrumb list — the path a visitor would take, not the folder
 	 * structure: Home → parent pages / post-type archive / category → page.
-	 * Always two or more entries; the last may omit item because it is the
-	 * current page.
+	 * Always two or more entries, each with an item URL.
 	 */
 	private function breadcrumb_schema(): ?array {
 		$items   = array();
@@ -627,13 +626,34 @@ class AEOMATIC_Schema {
 				);
 			}
 		} elseif ( is_archive() ) {
+			$self    = $this->archive_url();
 			$items[] = array(
 				'name' => wp_strip_all_tags( get_the_archive_title() ),
-				'url'  => '',
+				'url'  => $self,
 			);
 		} else {
 			return null;
 		}
+
+		// Every ListItem needs a name and an item URL (Search Console flags
+		// any that lack one). Drop intermediate crumbs whose link or label
+		// could not be resolved; give the current page fallbacks.
+		$last = count( $items ) - 1;
+		if ( empty( $items[ $last ]['url'] ) ) {
+			$items[ $last ]['url'] = $this->current_url();
+		}
+		if ( '' === trim( (string) $items[ $last ]['name'] ) ) {
+			$items[ $last ]['name'] = wp_strip_all_tags( wp_get_document_title() );
+		}
+		$items = array_values(
+			array_filter(
+				$items,
+				static function ( $item ) {
+					return is_string( $item['url'] ) && '' !== $item['url']
+						&& '' !== trim( (string) $item['name'] );
+				}
+			)
+		);
 
 		// One entry is not a hierarchy.
 		if ( count( $items ) < 2 ) {
@@ -645,24 +665,51 @@ class AEOMATIC_Schema {
 			'@type'           => 'BreadcrumbList',
 			'itemListElement' => array_map(
 				static function ( $item, $i ) {
-					$entry = array(
+					return array(
 						'@type'    => 'ListItem',
 						'position' => $i + 1,
 						'name'     => $item['name'],
+						'item'     => $item['url'],
 					);
-					if ( ! empty( $item['url'] ) ) {
-						$entry['item'] = $item['url'];
-					}
-					return $entry;
 				},
 				$items,
 				array_keys( $items )
 			),
 		);
-		if ( '' !== $self ) {
+		if ( is_string( $self ) && '' !== $self ) {
 			$schema['@id'] = $self . '#breadcrumb';
 		}
 		return $schema;
+	}
+
+	/**
+	 * Canonical URL of the current non-term archive (author, date,
+	 * post-type), or '' when it cannot be determined.
+	 */
+	private function archive_url(): string {
+		$url = '';
+		if ( is_post_type_archive() ) {
+			$pt  = get_query_var( 'post_type' );
+			$url = get_post_type_archive_link( is_array( $pt ) ? reset( $pt ) : $pt );
+		} elseif ( is_author() ) {
+			$url = get_author_posts_url( (int) get_queried_object_id() );
+		} elseif ( is_day() ) {
+			$url = get_day_link( get_query_var( 'year' ), get_query_var( 'monthnum' ), get_query_var( 'day' ) );
+		} elseif ( is_month() ) {
+			$url = get_month_link( get_query_var( 'year' ), get_query_var( 'monthnum' ) );
+		} elseif ( is_year() ) {
+			$url = get_year_link( get_query_var( 'year' ) );
+		}
+		return is_string( $url ) ? $url : '';
+	}
+
+	/**
+	 * Absolute URL of the current request, without the query string.
+	 */
+	private function current_url(): string {
+		global $wp;
+		$path = ( $wp instanceof WP && isset( $wp->request ) ) ? $wp->request : '';
+		return home_url( user_trailingslashit( '/' . ltrim( (string) $path, '/' ) ) );
 	}
 
 	/**

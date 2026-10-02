@@ -4,7 +4,7 @@ Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.4
+Stable tag: 1.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -218,6 +218,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.5 =
+Fixes the Search Console error "Missing field 'item' (in 'itemListElement')" in breadcrumb schema on author, date and post-type archives. Recommended update.
+
 = 1.2.4 =
 Schema now follows Google's current rules, with new SoftwareApplication and Dataset types and fuller Organization details. New AI Access screen shows whether AI crawlers can really reach your pages, and a one-click fix moves buried answers to the top of their section. Now runs on PHP 7.4. Fixes llms.txt redirects and escaping, and cached results breaking when text contained quotes. Recommended update.
 
@@ -240,6 +243,11 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.5 =
+
+* **Fix: "Missing field 'item' (in 'itemListElement')" in breadcrumb schema.** Every breadcrumb now carries its URL. Author, date and post-type archives link to themselves, and a breadcrumb whose link cannot be found is left out instead of printed without one.
+* **Fix: breadcrumbs with no name.** An untitled post or an empty archive title uses the page title instead, so the schema no longer fails with "Missing field 'name'".
 
 = 1.2.4 =
 
