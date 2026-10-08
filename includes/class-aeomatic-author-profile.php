@@ -40,7 +40,7 @@ class AEOMATIC_Author_Profile {
 		?>
 		<h2><?php esc_html_e( 'AEO author authority', 'aeomatic' ); ?></h2>
 		<p class="description" style="max-width:640px;">
-			<?php esc_html_e( 'These values feed AEOmatic\'s Person schema on every article you author. Stronger author signals (job, credentials, affiliations) are a primary Google E-E-A-T input and improve AI citation likelihood.', 'aeomatic' ); ?>
+			<?php esc_html_e( 'These values feed AEOmatic\'s Person schema on every article you author. Filled-in author details (job, credentials, affiliations) give search engines and AI systems a named, verifiable author.', 'aeomatic' ); ?>
 		</p>
 		<table class="form-table" role="presentation">
 			<?php foreach ( self::META_KEYS as $key => $label ) :

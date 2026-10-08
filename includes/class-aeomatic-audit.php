@@ -614,7 +614,7 @@ class AEOMATIC_Audit {
 			'max'    => 5,
 			'passed' => $wc_passed,
 			/* translators: %d: minimum word count threshold. */
-			'hint'   => sprintf( __( 'Aim for at least %d words. Thin content rarely gets cited.', 'aeomatic' ), $min_words ),
+			'hint'   => sprintf( __( 'Aim for at least %d words. Short pages give an AI answer little to extract.', 'aeomatic' ), $min_words ),
 		);
 
 		// 11. Statistics & data citations (10 pts). Rationale: a quantified claim
@@ -658,7 +658,7 @@ class AEOMATIC_Audit {
 			'points' => $has_firsthand ? 5 : 0,
 			'max'    => 5,
 			'passed' => $has_firsthand,
-			'hint'   => __( 'Mention what you tested, built, used, or measured yourself ("I tested…", "In our review…"). First-hand experience is a primary Google E-E-A-T signal.', 'aeomatic' ),
+			'hint'   => __( 'Mention what you tested, built, used, or measured yourself ("I tested…", "In our review…"). Google describes first-hand experience as part of E-E-A-T.', 'aeomatic' ),
 		);
 
 		// 13. Content freshness (5 pts) — AI engines favour recently updated pages.

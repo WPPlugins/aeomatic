@@ -48,8 +48,13 @@ class AEOMATIC_AI_Headers {
 		// robots.txt directives are the ones crawlers actually obey.
 		header( 'X-AI-Crawl: ' . ( self::any_crawler_allowed() ? 'allowed' : 'restricted' ) );
 		header( 'X-AI-Citeable: true' );
-		header( 'X-Content-License: free-to-cite-with-attribution' );
-		header( 'X-AI-Content-Type: human-authored' );
+
+		// These two state a licence and an authorship claim on the owner's
+		// behalf, so they are only sent when the owner opts in (1.2.6+).
+		if ( self::declares_content() ) {
+			header( 'X-Content-License: free-to-cite-with-attribution' );
+			header( 'X-AI-Content-Type: human-authored' );
+		}
 
 		if ( is_singular() ) {
 			header( 'X-AI-Speakable: true' );
@@ -59,6 +64,14 @@ class AEOMATIC_AI_Headers {
 			// false = allow multiple Link headers without overwriting.
 			header( 'Link: <' . esc_url_raw( home_url( '/llms.txt' ) ) . '>; rel="ai-context"; type="text/plain"', false );
 		}
+	}
+
+	/**
+	 * Has the owner opted in to the licence and authorship headers?
+	 * Off unless explicitly enabled, including on installs from before 1.2.6.
+	 */
+	public static function declares_content(): bool {
+		return (bool) AEOMATIC_Settings::get( 'ai_headers', 'declare_content' );
 	}
 
 	/**

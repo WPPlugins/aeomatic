@@ -50,7 +50,7 @@ class AEOMATIC_Detector_Local_Business implements AEOMATIC_Entity_Detector_Inter
 			$missing[]         = __( 'No organisation address in settings or on the page schema.', 'aeomatic' );
 			$recommendations[] = $signals->is_block_editor()
 				? __( 'Set the address on this page\'s LocalBusiness schema (Schema Generator sidebar), or add it site-wide in AEOmatic → Settings.', 'aeomatic' )
-				: __( 'Add the business address to this page\'s LocalBusiness schema — edit the post in the block editor to use the Schema Generator, or use the aeomatic_schema_overrides filter. Alternatively add it site-wide in AEOmatic → Settings.', 'aeomatic' );
+				: __( 'Add the business address to this page\'s LocalBusiness schema — open the AEOmatic schema editor (the Classic Editor metabox, or the AEOmatic button inside your page builder). Alternatively add it site-wide in AEOmatic → Settings.', 'aeomatic' );
 		}
 
 		if ( $signals->has_nap_pattern() ) {
@@ -77,7 +77,7 @@ class AEOMATIC_Detector_Local_Business implements AEOMATIC_Entity_Detector_Inter
 			$missing[]         = __( 'No opening hours in schema.', 'aeomatic' );
 			$recommendations[] = $signals->is_block_editor()
 				? __( 'Set openingHours in the Schema Generator so AI answers can quote your hours.', 'aeomatic' )
-				: __( 'Set openingHours on this page\'s LocalBusiness schema — edit the post in the block editor to use the Schema Generator, or set it via the aeomatic_schema_overrides filter.', 'aeomatic' );
+				: __( 'Set openingHours on this page\'s LocalBusiness schema — open the AEOmatic schema editor (the Classic Editor metabox, or the AEOmatic button inside your page builder).', 'aeomatic' );
 		}
 
 		$detected = $score >= AEOMATIC_Entity_Scanner::detected_threshold();

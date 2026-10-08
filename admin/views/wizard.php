@@ -151,9 +151,9 @@ $crawler_groups = array(
 					<?php
 					$bullets = array(
 						__( 'Auto-import your organisation name, logo and social profiles from Yoast, Rank Math, SEOPress, AIOSEO, or The SEO Framework.', 'aeomatic' ),
-						__( 'Set sensible defaults for ChatGPT, Claude, Perplexity, Google AI Overviews and 14 other AI crawlers.', 'aeomatic' ),
+						__( 'Set sensible defaults for 18 AI crawlers from OpenAI, Anthropic, Perplexity, Google, Meta and others.', 'aeomatic' ),
 						__( 'Turn on /llms.txt and /llms-full.txt so AI engines can ingest your whole site in one fetch.', 'aeomatic' ),
-						__( 'Emit the 5 emerging AI HTTP headers on every public page.', 'aeomatic' ),
+						__( 'Send optional AI discovery headers that point crawlers to your llms.txt.', 'aeomatic' ),
 					);
 					foreach ( $bullets as $b ) : ?>
 						<div style="padding:12px 14px; background:#f6f5ff; border-left:3px solid #5B3FFF; border-radius:4px; font-size:13px; color:#1d2327;">✓ <?php echo esc_html( $b ); ?></div>

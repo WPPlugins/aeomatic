@@ -4,7 +4,7 @@ Tags: structured data, json-ld, ai search, aeo, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.5
+Stable tag: 1.2.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -73,13 +73,15 @@ Settings pages tell you what you asked for. **AI Access** tells you what happens
 
 * **Entity Scanner** — scans content, schema, headings and metadata for Organization, Person, Service, Product, LocalBusiness and FAQ entities, returning a coverage score with per-entity confidence, detected signals, missing signals and recommendations.
 
-* **FAQ block** — a native Q&A block producing accessible `<details>`/`<summary>` markup, written for featured snippets. `[aeo_faq]` / `[aeo_qa]` shortcodes for the Classic Editor.
+* **FAQ block** — a native Q&A block producing accessible `<details>`/`<summary>` markup, written for featured snippets. The visible Q&A carries lightweight schema.org FAQPage microdata; no FAQPage JSON-LD is added. `[aeo_faq]` / `[aeo_qa]` shortcodes for the Classic Editor.
 
 * **Setup wizard with a real first audit** — six skippable steps: welcome, import from your existing SEO plugin, organisation details, AI crawler access, **your first readiness audit**, verify. The audit step shows your score and the three highest-value fixes with direct links, so you finish onboarding knowing what to do next.
 
 * **SEO plugin conflict detection** — detects Yoast SEO, Rank Math, All in One SEO, SEOPress and The SEO Framework, and checks whether each is *currently emitting* overlapping schema. One click disables only the overlapping types **in AEOmatic**; your other plugin's configuration is never modified.
 
-* **AI HTTP discovery headers** — optional `X-AI-Crawl`, `X-AI-Citeable`, `X-Content-License`, `X-AI-Content-Type`, `X-AI-Speakable` headers plus a `Link: rel="ai-context"` pointer to your llms.txt. These are proposed conventions, not a ratified standard, and no AI vendor has committed to reading them — so they ship as a setting you can switch off.
+* **AI HTTP discovery headers** — `X-AI-Crawl`, `X-AI-Citeable`, `X-Content-License`, `X-AI-Content-Type`, `X-AI-Speakable` headers plus a `Link: rel="ai-context"` pointer to your llms.txt. These are proposed conventions, not a ratified standard, and no AI vendor has committed to reading them. They are on by default and can be switched off under **AEOmatic → Settings → AI discovery headers**. `X-Content-License` (free-to-cite-with-attribution) and `X-AI-Content-Type` (human-authored) state a licence and an authorship claim for your content, so they are **off unless you turn them on** in the same section.
+
+* **Ask AI tab** — type a question, then open ChatGPT, Perplexity, Google AI or Claude in a new tab with it pre-filled, to see for yourself how those engines answer. The plugin only builds the link; nothing is sent from your server.
 
 * **Live verification panel** — makes HTTP requests to your own site and shows what is actually being served: llms.txt with size and line count, robots.txt with AI bot count, schema blocks on your latest post with a direct Google Rich Results Test link.
 
@@ -97,6 +99,8 @@ Settings pages tell you what you asked for. **AI Access** tells you what happens
 * **Apple Intelligence** — Applebot-Extended
 * **Cohere** — Cohere-AI
 * **DuckDuckGo AI answers** — DuckAssistBot
+* **Amazon** — Amazonbot
+* **ByteDance** — Bytespider
 * **Common Crawl** — CCBot
 
 Controlling a crawler's access controls whether it can read you. It does not control whether an engine cites you.
@@ -113,7 +117,7 @@ Schema and metadata generate server-side and cache in post meta. There are no ex
 * **E-commerce stores** on WooCommerce
 * **SEO professionals and content teams** who need an AI layer on top of their existing stack
 * **Agencies** running a repeatable audit across client sites
-* **WordPress developers** — 11 filters, a documented REST namespace, and analyzer interfaces to extend
+* **WordPress developers** — 19 filters, a documented REST namespace, and analyzer interfaces to extend
 
 == Installation ==
 
@@ -175,7 +179,7 @@ Schema is generated server-side and cached in post meta. `/llms.txt` and `/llms-
 
 = What schema types does it support? =
 
-Twenty-one page-level types (Article, BlogPosting, NewsArticle, TechArticle, Recipe, Review, Product, SoftwareApplication, Service, LocalBusiness, Event, JobPosting, Course, Dataset, Book, Movie, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage) plus Organization, WebSite, WebPage, Author/Person, Breadcrumb, VideoObject and Speakable. FAQPage, HowTo and the sitelinks search box are not emitted: Google no longer shows them.
+Twenty-one page-level types (Article, BlogPosting, NewsArticle, TechArticle, Recipe, Review, Product, SoftwareApplication, Service, LocalBusiness, Event, JobPosting, Course, Dataset, Book, Movie, WebPage, AboutPage, ContactPage, CollectionPage, ProfilePage) plus Organization, WebSite, WebPage, Author/Person, Breadcrumb, VideoObject and Speakable. FAQPage and HowTo JSON-LD and the sitelinks search box are not emitted: Google no longer shows them. The FAQ block keeps FAQPage microdata on its visible questions and answers.
 
 = Does it work with WooCommerce? =
 
@@ -199,12 +203,18 @@ Deleting the plugin removes every option, transient, scheduled task and post-met
 
 == Screenshots ==
 
-1. AI Readiness dashboard — overall score, three category cards labelled direct-check or heuristic, issue count and top recommendations.
-2. Visual schema editor in the block-editor sidebar — auto-populated fields, live JSON-LD preview, type confidence.
-3. Type-aware JSON-LD generation — Recipe schema with auto-extracted ingredients and instructions.
-4. AI crawler activity — which bots requested which URLs and what HTTP status was served.
-5. Setup wizard readiness step — your first audit score with the three highest-value fixes.
-6. Live verification panel showing what is actually being served, with a direct Google Rich Results Test link.
+1. AI Readiness dashboard — overall score, technical, content and AI crawler access cards labelled direct check or heuristic, and the top recommendations.
+2. AI Citation Gaps — site-wide table of pages to fix, filterable by post type, author, severity, gap type, score and date.
+3. Per-post AI readiness — five categories (Content, Trust, Authority, Entities, Technical), each with issues and recommendations.
+4. What did we do? — live verification of llms.txt, llms-full.txt, robots.txt and JSON-LD on your own site, with a Google Rich Results Test link.
+5. Setup wizard — welcome, organisation details with a live JSON-LD preview, AI crawler choices, your first audit, and verification.
+6. Entity Scanner — coverage for Organization, Person, Service, Product, LocalBusiness and FAQ entities.
+7. Schema tab in the editor sidebar — detected schema type with confidence, editable fields and the live JSON-LD.
+8. Readiness tab in the editor — the per-post readiness breakdown while you write.
+9. Audit tab — a 0–100 content score from thirteen weighted checks, each with a hint.
+10. Gaps tab — the top citation gaps for the open post, with a one-click fix where one exists.
+11. Entities tab — entity coverage for the open post.
+12. Ask AI tab — opens ChatGPT, Perplexity, Google AI or Claude with your question so you can check their answers yourself.
 
 == Privacy Policy ==
 
@@ -217,6 +227,9 @@ The AI crawler visit log records, in your own database only: the matched bot nam
 AEOmatic makes no external API calls on the front end and ships with no third-party analytics or telemetry.
 
 == Upgrade Notice ==
+
+= 1.2.6 =
+The licence and "human-authored" AI headers are now opt-in, so AEOmatic no longer states either on your behalf; turn them back on in Settings if they are true for your site. Also removes a predicted citation timeline and other overstated claims from the admin screens.
 
 = 1.2.5 =
 Fixes the Search Console error "Missing field 'item' (in 'itemListElement')" in breadcrumb schema on author, date and post-type archives. Recommended update.
@@ -243,6 +256,15 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.6 =
+
+* **Changed: licence and authorship headers are opt-in.** `X-Content-License: free-to-cite-with-attribution` and `X-AI-Content-Type: human-authored` are no longer sent unless you turn on **Settings → AI discovery headers → Licence and authorship headers**. They state a licence and an authorship claim for your content, so the site owner should choose them. The other discovery headers are unchanged.
+* **Changed: honest wording on "What did we do?"** The "How long until I see results?" timeline predicted AI citations by week 4–8. It is replaced by "What happens next?", which covers only what your site controls and points to the crawler log and the Ask AI tab.
+* **Changed: setup wizard** no longer says it sets defaults for Google AI Overviews (Google-Extended controls Gemini training; AI Overviews uses Googlebot), and describes the discovery headers as optional.
+* **Changed:** author, verification and audit hints no longer describe author bios, word count or first-hand experience as proven AI citation factors.
+* **Fix: entity recommendations named a filter that does not exist.** Product, Service and LocalBusiness hints for Classic Editor and page-builder posts now point to the AEOmatic schema editor (Classic Editor metabox or the AEOmatic button in your page builder) instead of an `aeomatic_schema_overrides` filter.
+* **Changed:** the FAQ block description now matches what it does (visible Q&A), and the readme documents its FAQPage microdata, the full crawler list, all 19 filters and the Ask AI tab, with screenshot captions that match the screenshots.
 
 = 1.2.5 =
 

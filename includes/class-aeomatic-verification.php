@@ -396,7 +396,7 @@ class AEOMATIC_Verification {
 
 		return $this->result( 'authors', __( 'Author bios for schema', 'aeomatic' ), 'warn',
 			/* translators: 1: with bios, 2: total, 3: missing names */
-			sprintf( __( '%1$d of %2$d authors have bios. Missing: %3$s. Author authority is a strong AI citation signal.', 'aeomatic' ),
+			sprintf( __( '%1$d of %2$d authors have bios. Missing: %3$s. Bios feed the author (Person) schema on their posts.', 'aeomatic' ),
 				$with_bios, $total, $missing_names ),
 			admin_url( 'users.php' ), null );
 	}

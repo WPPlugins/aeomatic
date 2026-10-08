@@ -91,7 +91,9 @@ class AEOMATIC_Settings {
 				// Emit the X-AI-* discovery headers and the Link: rel="ai-context"
 				// header on public requests. Read by AEOMATIC_AI_Headers and scored
 				// by AEOMATIC_Analyzer_Technical.
-				'enabled' => true,
+				'enabled'         => true,
+				// X-Content-License + X-AI-Content-Type: opt-in, see AEOMATIC_AI_Headers.
+				'declare_content' => false,
 			),
 			'log'              => array(
 				// Days to retain AI crawler visit rows. Purged daily via WP-Cron.
@@ -256,7 +258,8 @@ class AEOMATIC_Settings {
 		}
 
 		if ( isset( $input['ai_headers'] ) && is_array( $input['ai_headers'] ) ) {
-			$out['ai_headers']['enabled'] = ! empty( $input['ai_headers']['enabled'] );
+			$out['ai_headers']['enabled']         = ! empty( $input['ai_headers']['enabled'] );
+			$out['ai_headers']['declare_content'] = ! empty( $input['ai_headers']['declare_content'] );
 		}
 
 		if ( isset( $input['log'] ) && is_array( $input['log'] ) ) {

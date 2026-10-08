@@ -44,7 +44,7 @@ class AEOMATIC_Detector_Product implements AEOMATIC_Entity_Detector_Interface {
 			$missing[]         = __( 'No price / offers property.', 'aeomatic' );
 			$recommendations[] = $signals->is_block_editor()
 				? __( 'Fill the price or offers property in the Schema Generator sidebar.', 'aeomatic' )
-				: __( 'Set the price or offers property on this page\'s Product schema — edit the post in the block editor to use the Schema Generator, or set them via the aeomatic_schema_overrides filter.', 'aeomatic' );
+				: __( 'Set the price or offers property on this page\'s Product schema — open the AEOmatic schema editor (the Classic Editor metabox, or the AEOmatic button inside your page builder).', 'aeomatic' );
 		}
 
 		$has_sku = $signals->schema_override( 'sku' )

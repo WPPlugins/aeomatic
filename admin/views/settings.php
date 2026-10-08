@@ -161,7 +161,7 @@ settings_errors( 'aeomatic_messages' );
 
 		<h2 class="title"><?php esc_html_e( 'AI discovery headers', 'aeomatic' ); ?></h2>
 		<p class="description">
-			<?php esc_html_e( 'Optional HTTP response headers added to public pages. These are proposed conventions, not a ratified standard — no AI vendor has published a commitment to read them. They are harmless to send and easy to turn off.', 'aeomatic' ); ?>
+			<?php esc_html_e( 'Optional HTTP response headers added to public pages. These are proposed conventions, not a ratified standard — no AI vendor has published a commitment to read them. They are easy to turn off.', 'aeomatic' ); ?>
 		</p>
 		<table class="form-table" role="presentation">
 			<tr>
@@ -172,6 +172,17 @@ settings_errors( 'aeomatic_messages' );
 						<input type="checkbox" name="aeob[ai_headers][enabled]" value="1" <?php checked( AEOMATIC_AI_Headers::is_enabled() ); ?> />
 						<?php esc_html_e( 'Emit X-AI-* headers and the ai-context Link header on public requests', 'aeomatic' ); ?>
 					</label>
+				</td>
+			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Licence and authorship headers', 'aeomatic' ); ?></th>
+				<td>
+					<label>
+						<input type="hidden" name="aeob[ai_headers][declare_content]" value="0" />
+						<input type="checkbox" name="aeob[ai_headers][declare_content]" value="1" <?php checked( AEOMATIC_AI_Headers::declares_content() ); ?> />
+						<?php esc_html_e( 'Also send X-Content-License: free-to-cite-with-attribution and X-AI-Content-Type: human-authored', 'aeomatic' ); ?>
+					</label>
+					<p class="description"><?php esc_html_e( 'These state a licence for your content and that it is written by people. Only turn this on if both are true for your site.', 'aeomatic' ); ?></p>
 				</td>
 			</tr>
 			<tr>
@@ -189,8 +200,10 @@ settings_errors( 'aeomatic_messages' );
 						?>
 						<li>X-AI-Crawl: <?php echo esc_html( $aeomatic_any_allowed ? 'allowed' : 'restricted' ); ?></li>
 						<li>X-AI-Citeable: true</li>
+						<?php if ( AEOMATIC_AI_Headers::declares_content() ) : ?>
 						<li>X-Content-License: free-to-cite-with-attribution</li>
 						<li>X-AI-Content-Type: human-authored</li>
+						<?php endif; ?>
 						<li>X-AI-Speakable: true <em style="font-family:sans-serif;font-size:12px;color:#50575e;"><?php esc_html_e( '(singular pages only)', 'aeomatic' ); ?></em></li>
 						<?php if ( AEOMATIC_Settings::get( 'llms_txt', 'enabled' ) ) : ?>
 						<li>

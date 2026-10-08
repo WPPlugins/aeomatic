@@ -222,15 +222,14 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 	</div>
 
 	<div class="aeob-card aeob-card--tips">
-		<h2><?php esc_html_e( 'How long until I see results?', 'aeomatic' ); ?></h2>
+		<h2><?php esc_html_e( 'What happens next?', 'aeomatic' ); ?></h2>
 		<p>
-			<?php esc_html_e( 'AEOmatic makes structural changes to your site that AI engines can read immediately. However, AI search engines crawl on their own schedule:', 'aeomatic' ); ?>
+			<?php esc_html_e( 'The changes AEOmatic makes are live on your site straight away. What AI engines do with them happens on their own schedule, outside your site:', 'aeomatic' ); ?>
 		</p>
 		<ul class="aeob-timeline">
-			<li><strong><?php esc_html_e( 'Day 1:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'Schema, llms.txt and robots.txt directives are live immediately. Verify above.', 'aeomatic' ); ?></li>
-			<li><strong><?php esc_html_e( 'Week 1–2:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'AI crawlers (GPTBot, ClaudeBot, PerplexityBot) start picking up your changes.', 'aeomatic' ); ?></li>
-			<li><strong><?php esc_html_e( 'Week 4–8:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'Citations begin appearing in AI search results for well-optimised pages.', 'aeomatic' ); ?></li>
-			<li><strong><?php esc_html_e( 'Month 3+:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'Compound effect — sites that optimised early hold AI citations against latecomers.', 'aeomatic' ); ?></li>
+			<li><strong><?php esc_html_e( 'Now:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'Schema, llms.txt and robots.txt directives are live. Verify them above.', 'aeomatic' ); ?></li>
+			<li><strong><?php esc_html_e( 'As crawlers return:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'AI crawlers pick up your changes when they next visit. The AI crawler log above shows each visit and the status your site returned.', 'aeomatic' ); ?></li>
+			<li><strong><?php esc_html_e( 'Citations:', 'aeomatic' ); ?></strong> <?php esc_html_e( 'Whether an AI engine quotes your pages is decided by that engine, and no plugin can promise it or predict when. Use the Ask AI tab in the editor to check answers yourself.', 'aeomatic' ); ?></li>
 		</ul>
 	</div>
 </div>

@@ -4,7 +4,7 @@
 	"name": "aeomatic/faq",
 	"title": "AEO FAQ",
 	"category": "text",
-	"description": "Frequently asked questions block. Auto-generates FAQ schema for AI search engines.",
+	"description": "Frequently asked questions as visible Q&A, with short direct answers that snippets and AI answers can quote.",
 	"icon": "format-chat",
 	"keywords": ["faq", "questions", "aeo", "schema"],
 	"textdomain": "aeomatic",
