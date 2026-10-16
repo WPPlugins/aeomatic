@@ -398,7 +398,7 @@ class AEOMATIC_Schema {
 	/** Class put on the opening paragraph so the speakable selector always matches. */
 	const SPEAKABLE_CLASS = 'aeomatic-speakable';
 
-	/** Whether mark_speakable() marked a paragraph in this request. */
+	/** Whether mark_speakable() marked a paragraph in the page body in this request. */
 	private bool $speakable_marked = false;
 
 	/**
@@ -418,12 +418,26 @@ class AEOMATIC_Schema {
 	 * content. A fixed theme selector such as ".entry-content p" does not
 	 * exist in block themes or page builders, and validators report a
 	 * selector that matches nothing on the page as an error.
+	 *
+	 * the_content also runs for copies that are never printed: the
+	 * automatic excerpt (get_the_excerpt → wp_trim_excerpt), which the
+	 * WebPage description builds in wp_head, and SEO plugins reading the
+	 * content for meta tags. Those calls are skipped, and every other call
+	 * for the main post is marked, so whichever copy the theme prints
+	 * carries the class.
 	 */
 	public function mark_speakable( $content ) {
-		if ( $this->speakable_marked || ! is_string( $content ) || is_admin() || is_feed() || ! $this->speakable_applies() ) {
+		if ( ! is_string( $content ) || is_admin() || is_feed() || ! $this->speakable_applies() ) {
+			return $content;
+		}
+		if ( doing_action( 'wp_head' ) || doing_filter( 'get_the_excerpt' ) ) {
 			return $content;
 		}
 		if ( get_the_ID() !== get_queried_object_id() || ! is_main_query() ) {
+			return $content;
+		}
+		if ( preg_match( '/\bclass=("|\')[^"\']*(?<![\w-])' . self::SPEAKABLE_CLASS . '(?![\w-])/i', $content ) ) {
+			$this->speakable_marked = true;
 			return $content;
 		}
 		if ( ! preg_match_all( '/<p(\s[^>]*)?>(.*?)<\/p>/is', $content, $matches, PREG_OFFSET_CAPTURE | PREG_SET_ORDER ) ) {

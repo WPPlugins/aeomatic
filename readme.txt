@@ -1,18 +1,40 @@
-=== AEOmatic — AEO, AI SEO, llms.txt & Schema ===
+=== AEOmatic – AEO for AI Search: llms.txt, Schema & AI Crawler Check ===
 Contributors: mmtushar
-Tags: structured data, json-ld, ai search, aeo, ai crawler
+Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.6
+Stable tag: 1.2.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AEO and AI SEO for WordPress: 21 schema types, a visual JSON-LD editor, llms.txt, and AI crawler control. Reads Elementor, Divi and ACF.
+Can ChatGPT, Perplexity and Google AI read your site? Check AI crawler access, add llms.txt and schema, fix AEO gaps. Free, no API key.
 
 == Description ==
 
-**Answer Engine Optimization (AEO) for WordPress.** AI search engines cannot cite what they cannot parse. AEOmatic makes your WordPress content machine-readable — then shows you what the crawlers actually got.
+**Can ChatGPT, Perplexity and Google's AI actually read your WordPress site?**
+
+Many sites are invisible to AI search for reasons their owners never see: a CDN, firewall or security plugin quietly blocking AI crawlers; content that only appears after JavaScript runs, which the ChatGPT, Claude and Perplexity crawlers do not execute; or pages with nothing a machine can parse. AEOmatic checks for each of these, fixes what a plugin can fix, and tells you plainly about the rest.
+
+Answer Engine Optimization (AEO), also called Generative Engine Optimization (GEO), LLM SEO or AI search optimization, is mostly good SEO done carefully, plus a few checks that are specific to AI. AEOmatic covers that AI layer and runs beside Yoast SEO, Rank Math, All in One SEO or SEOPress without touching their settings.
+
+= What you find out in the first few minutes =
+
+* **Whether AI crawlers get your real pages.** AEOmatic requests your pages as GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, PerplexityBot, Googlebot and Bingbot, and compares each answer with a normal browser. A block, a bot-challenge page or a 404 shows up by name.
+* **What AI actually reads on a page:** the text a crawler that does not run JavaScript receives, and the sentences that only appear after JavaScript runs.
+* **Your AI readiness score** and the three fixes worth doing first, each linked to the page that needs it.
+* **Which posts are hard to quote:** answers buried under filler, missing author signals, orphan pages, thin content. Some have a one-click fix.
+
+= Why site owners trust it =
+
+* **No promises it cannot keep.** No plugin can guarantee a citation in ChatGPT or Google AI Overviews, and AEOmatic does not claim to. It measures readiness, the part you control, and the dashboard is labelled that way.
+* **Every score shows its working.** Each check says whether it is a direct check or a heuristic.
+* **Honest about llms.txt.** Google has said it does not use llms.txt, and AI crawlers rarely request it so far. AEOmatic generates it automatically because it costs nothing to keep and some AI tools can use it, not because it is a ranking switch.
+* **Your data stays on your server.** No account, no API key, no telemetry, and no external calls on the front end. The AI crawler log stores no IP addresses.
+* **Safe beside your SEO plugin.** It never edits your titles, meta descriptions, canonicals, sitemaps or another plugin's settings, and it resolves schema overlap on its own side.
+* **Clean uninstall.** Deleting the plugin removes everything it created.
+
+= What it does =
 
 It does three jobs:
 
@@ -26,19 +48,11 @@ Most AI SEO plugins parse `post_content` and stop. If your pages are built in El
 
 AEOmatic runs one normalising extraction pass that understands **Gutenberg, the Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen and WPBakery**, plus ACF text, textarea, wysiwyg, repeater and flexible-content fields. Everything downstream — schema generation, the audit, readiness scoring, `llms.txt` — reads that single extraction, so a page assembled in a builder is scored on what it actually renders.
 
-This work goes by several names — Answer Engine Optimization (AEO), Generative Engine Optimization (GEO), LLM SEO, AI search optimization. Same underlying job.
-
 = Built to sit beside your SEO plugin, not replace it =
 
 AEOmatic writes only its own settings and its own post meta. It never touches your titles, meta descriptions, canonicals or XML sitemaps, and it never modifies another plugin's configuration.
 
 It detects Yoast SEO, Rank Math, All in One SEO, SEOPress and The SEO Framework, can import your organisation details from whichever you run, and flags the case where two plugins would emit the same JSON-LD type on one page — with a one-click fix that adjusts **AEOmatic's** output, never theirs.
-
-= Scores you can check yourself =
-
-AEOmatic measures what is verifiable on your own install: whether AI crawlers can reach your pages, whether those pages carry structured data a machine can parse, and whether your content is shaped so an answer can be lifted out of it. Every check tells you whether it is a direct check or a heuristic, so you can see which is which.
-
-The dashboard is labelled **AI Readiness** rather than AI Visibility, because that is what it measures — your site's preparation, not whether an engine has cited you.
 
 = Check what AI crawlers actually get =
 
@@ -111,12 +125,12 @@ Schema and metadata generate server-side and cache in post meta. There are no ex
 
 = Who it is for =
 
+* **Business owners and bloggers** who see AI answers replacing clicks and want to know whether AI can even read their site
+* **SEO consultants and agencies** who need evidence to show clients, not a vanity score, and a repeatable audit across sites
+* **Elementor, Divi, Bricks and ACF sites** that tools reading only the post content score against a nearly empty page
 * **Publishers and media** who want to be quoted by AI as a source
 * **Businesses and SaaS companies** who want their entity data to be unambiguous to AI systems
-* **Local businesses** who want correct LocalBusiness signals
-* **E-commerce stores** on WooCommerce
-* **SEO professionals and content teams** who need an AI layer on top of their existing stack
-* **Agencies** running a repeatable audit across client sites
+* **Local businesses and WooCommerce stores** who need correct LocalBusiness and Product data
 * **WordPress developers** — 19 filters, a documented REST namespace, and analyzer interfaces to extend
 
 == Installation ==
@@ -136,6 +150,22 @@ You do **not** normally need to re-save permalinks after installing or updating 
 = Will this get me cited by ChatGPT or ranked in AI search? =
 
 No plugin can promise that, and AEOmatic does not. What it does is fix the technical and content signals you control: crawler access, parseable structured data, an llms.txt index, and content shaped so an answer can be extracted. Whether an AI engine then cites you depends on that engine's own ranking and retrieval, which nobody outside those companies controls. Any plugin promising guaranteed AI citations is guessing.
+
+= Is AEO different from SEO? =
+
+Mostly not, and be careful with anyone who says otherwise. Google says AI Overviews and AI Mode use the same crawling and indexing as normal search, with no special AI markup required. What is different is practical: CDNs and firewalls often block AI crawlers while letting Googlebot through, most AI crawlers do not run JavaScript, and AI answers are lifted from pages that state the answer plainly. AEOmatic focuses on those differences.
+
+= Does llms.txt actually help? =
+
+It is not a ranking factor. Google does not use it, and public crawl data shows AI crawlers rarely request it so far. Some AI tools can use it when they are pointed at a site. AEOmatic generates and updates it automatically, so it costs you nothing to have, and you can switch it off under **AEOmatic → Settings**.
+
+= I already use Yoast SEO or Rank Math. Do I need this? =
+
+They handle classic SEO, and AEOmatic does not replace them. It adds checks they are not built around: whether AI crawlers really get through your CDN or firewall, what a crawler that does not run JavaScript reads, which AI bots visit and what status they get, and how easily an answer can be quoted from each post.
+
+= Is it free? =
+
+Yes. Everything described on this page is in this plugin, with no account, no API key and no usage limits.
 
 = What is the difference between AI readiness and AI visibility? =
 
@@ -228,6 +258,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.7 =
+ACF relationship, post object, page link and link fields now count as internal links, the internal-links check counts relative links and each page once, and the speakable "No matches found" validator error is fixed. Re-run the audit to refresh scores.
+
 = 1.2.6 =
 The licence and "human-authored" AI headers are now opt-in, so AEOmatic no longer states either on your behalf; turn them back on in Settings if they are true for your site. Also removes a predicted citation timeline and other overstated claims from the admin screens.
 
@@ -256,6 +289,12 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.7 =
+
+* **Fix: related content in ACF relationship fields is now counted.** Relationship, Post Object, Page Link and Link fields (including inside repeaters, groups and flexible content) are read as links, so related resources chosen in ACF count toward the audit's internal-links check and the citation gaps. Click Re-run in the Audit tab, or update the post, to refresh an existing score.
+* **Fix: the audit's internal-links check** now counts relative links (`/guide/`), treats `www.` and letter case as the same site, counts each page once, and ignores links to the post itself, in-page anchors, admin pages and uploaded files. The hint now shows how many pages were found.
+* **Fix: "No matches found for expression .aeomatic-speakable" in schema validators** on Article, NewsArticle, TechArticle and other posts without a manual excerpt. The excerpt AEOmatic builds for the page description used up the speakable mark, so the visible paragraph never got the class. The mark now goes on the paragraph visitors see, and speakable is left out when there is none.
 
 = 1.2.6 =
 

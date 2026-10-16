@@ -77,6 +77,7 @@ $aeomatic_meta_keys = array(
 	'_aeomatic_schema_cache',
 	'_aeomatic_schema_overrides',
 	'_aeomatic_acf_text',
+	'_aeomatic_acf_text_v2',
 	'_aeomatic_ai_readiness',
 	'_aeomatic_ai_readiness_fingerprint',
 	'_aeomatic_ai_readiness_score',

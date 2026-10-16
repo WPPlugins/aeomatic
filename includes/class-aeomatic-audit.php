@@ -450,6 +450,53 @@ class AEOMATIC_Audit {
 	}
 
 	/**
+	 * Count the distinct pages on this site that a list of hrefs points to.
+	 *
+	 * Relative links count, "www." and letter case are ignored, and links to
+	 * the post itself, in-page anchors, wp-admin, uploaded files and
+	 * mailto/tel/javascript are skipped. Each page counts once.
+	 *
+	 * @param string[] $hrefs Raw href values.
+	 */
+	public static function count_internal_links( array $hrefs, WP_Post $post ): int {
+		$bare      = static function ( $host ): string {
+			return (string) preg_replace( '/^www\./', '', strtolower( (string) $host ) );
+		};
+		$path_key  = static function ( string $url ): string {
+			$path = (string) wp_parse_url( $url, PHP_URL_PATH );
+			$path = '/' . trim( $path, '/' );
+			return '/' === $path ? '/' : $path . '/';
+		};
+		$home_host = $bare( wp_parse_url( home_url(), PHP_URL_HOST ) );
+		$self      = $path_key( (string) get_permalink( $post ) );
+
+		$pages = array();
+		foreach ( $hrefs as $href ) {
+			$href = trim( html_entity_decode( (string) $href, ENT_QUOTES ) );
+			if ( '' === $href || '#' === $href[0] || preg_match( '#^(mailto|tel|javascript|data):#i', $href ) ) {
+				continue;
+			}
+			$host = wp_parse_url( $href, PHP_URL_HOST );
+			if ( $host ) {
+				if ( $bare( $host ) !== $home_host ) {
+					continue; // External link.
+				}
+				$url = $href;
+			} elseif ( preg_match( '#^[a-z][a-z0-9+.-]*:#i', $href ) ) {
+				continue; // Another scheme without a host.
+			} else {
+				$url = home_url( '/' . ltrim( $href, '/' ) ); // Relative link.
+			}
+			$key = $path_key( $url );
+			if ( $key === $self || preg_match( '#^/(wp-admin|wp-login\.php|wp-content/uploads)(/|$)#', $key ) ) {
+				continue;
+			}
+			$pages[ $key ] = true;
+		}
+		return count( $pages );
+	}
+
+	/**
 	 * Compute the AEO score and persist to meta.
 	 *
 	 * @return array{score:int, breakdown:array<int,array{key:string,label:string,points:int,max:int,passed:bool,hint:string}>}
@@ -540,16 +587,11 @@ class AEOMATIC_Audit {
 			'hint'   => __( 'Add a 30+ character author bio. A named author with real credentials makes the content easier to trust and attribute.', 'aeomatic' ),
 		);
 
-		// 6. Internal links (10 pts).
-		$home    = wp_parse_url( home_url(), PHP_URL_HOST );
+		// 6. Internal links (10 pts). Content, page-builder and ACF fields
+		//    (including relationship fields) all arrive in $content_html.
+		$home = wp_parse_url( home_url(), PHP_URL_HOST );
 		preg_match_all( '/<a\s+[^>]*href=["\']([^"\']+)["\']/i', $content_html, $am );
-		$internal = 0;
-		foreach ( ( $am[1] ?? array() ) as $href ) {
-			$host = wp_parse_url( $href, PHP_URL_HOST );
-			if ( $host && $host === $home ) {
-				$internal++;
-			}
-		}
+		$internal     = self::count_internal_links( $am[1] ?? array(), $post );
 		$internal_pts = $internal >= 3 ? 10 : ( $internal >= 1 ? 5 : 0 );
 		$checks[] = array(
 			'key'    => 'internal_links',
@@ -557,7 +599,11 @@ class AEOMATIC_Audit {
 			'points' => $internal_pts,
 			'max'    => 10,
 			'passed' => $internal_pts === 10,
-			'hint'   => __( 'Add 3+ internal links to related authoritative pages on your site.', 'aeomatic' ),
+			'hint'   => sprintf(
+				/* translators: %d: number of distinct internal pages linked */
+				__( 'Link to at least 3 other pages on your site from this post (found %d). Links in the content and in ACF fields, including relationship fields, count.', 'aeomatic' ),
+				$internal
+			),
 		);
 
 		// 7. Tables / lists (10 pts).

@@ -1017,7 +1017,15 @@ class AEOMATIC_Content_Extractor {
 		}
 	}
 
-	const ACF_CACHE_META = '_aeomatic_acf_text';
+	// _v2 since 1.2.6: the cache now includes links from relationship-type
+	// fields, so caches built by earlier versions must not be reused.
+	const ACF_CACHE_META = '_aeomatic_acf_text_v2';
+
+	/**
+	 * ACF field types whose value points at other content. The theme renders
+	 * them as links, so the extraction does too (internal-link checks).
+	 */
+	const ACF_LINK_TYPES = array( 'relationship', 'post_object', 'page_link', 'link' );
 
 	/**
 	 * Extract text from ACF fields.
@@ -1114,6 +1122,14 @@ class AEOMATIC_Content_Extractor {
 				continue;
 			}
 
+			if ( in_array( $type, self::ACF_LINK_TYPES, true ) ) {
+				$links = self::acf_link_html( $value );
+				if ( '' !== $links ) {
+					$buf[] = $links;
+				}
+				continue;
+			}
+
 			if ( in_array( $type, $nested_types, true ) && is_array( $value ) ) {
 				$sub_fields = $field['sub_fields'] ?? array();
 				// Group value is a flat assoc array; wrap it so walk_acf_rows
@@ -1156,6 +1172,11 @@ class AEOMATIC_Content_Extractor {
 				$sf_type = $defs[ $key ]['type'] ?? '';
 				if ( in_array( $sf_type, $text_types, true ) && is_string( $val ) && '' !== trim( $val ) ) {
 					$buf[] = $val;
+				} elseif ( in_array( $sf_type, self::ACF_LINK_TYPES, true ) ) {
+					$links = self::acf_link_html( $val );
+					if ( '' !== $links ) {
+						$buf[] = $links;
+					}
 				} elseif ( in_array( $sf_type, $nested_types, true ) && is_array( $val ) ) {
 					$child_sub_fields = $defs[ $key ]['sub_fields'] ?? array();
 					$child_rows       = ( 'group' === $sf_type ) ? array( $val ) : $val;
@@ -1167,6 +1188,46 @@ class AEOMATIC_Content_Extractor {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Render an ACF relationship / post object / page link / link value as
+	 * anchor tags, the way a theme shows "related resources".
+	 *
+	 * Handles every return format: WP_Post objects, post IDs, URL strings and
+	 * link arrays ({url, title, target}), single or multiple.
+	 *
+	 * @param mixed $value Formatted ACF field value.
+	 */
+	private static function acf_link_html( $value ): string {
+		if ( empty( $value ) ) {
+			return '';
+		}
+		// A single link array or a single item; otherwise a list of items.
+		$items = ( is_array( $value ) && ! isset( $value['url'] ) ) ? $value : array( $value );
+
+		$out = array();
+		foreach ( $items as $item ) {
+			$url   = '';
+			$title = '';
+			if ( $item instanceof WP_Post ) {
+				$url   = (string) get_permalink( $item );
+				$title = get_the_title( $item );
+			} elseif ( is_numeric( $item ) ) {
+				$url   = (string) get_permalink( (int) $item );
+				$title = get_the_title( (int) $item );
+			} elseif ( is_array( $item ) && ! empty( $item['url'] ) && is_string( $item['url'] ) ) {
+				$url   = $item['url'];
+				$title = isset( $item['title'] ) ? (string) $item['title'] : '';
+			} elseif ( is_string( $item ) ) {
+				$url = $item;
+			}
+			if ( '' === $url ) {
+				continue;
+			}
+			$out[] = sprintf( '<a href="%s">%s</a>', esc_url( $url ), esc_html( '' !== $title ? $title : $url ) );
+		}
+		return implode( "\n", $out );
 	}
 
 	/**
