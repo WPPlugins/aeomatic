@@ -171,10 +171,45 @@ class AEOMATIC_Crawler_Log {
 
 	/**
 	 * Return the most recent log entries, newest first.
+	 *
+	 * @param int    $limit       Maximum entries to return.
+	 * @param bool   $errors_only Only entries answered with an HTTP status of 400 or above.
+	 * @param string $bot         Only entries for this crawler ('' for all).
 	 */
-	public static function get_recent( int $limit = 50 ): array {
-		$log = (array) get_option( self::OPTION_KEY, array() );
-		return array_slice( array_reverse( $log ), 0, $limit );
+	public static function get_recent( int $limit = 50, bool $errors_only = false, string $bot = '' ): array {
+		$log = array_reverse( (array) get_option( self::OPTION_KEY, array() ) );
+		if ( $errors_only || '' !== $bot ) {
+			$log = array_filter(
+				$log,
+				static function ( $entry ) use ( $errors_only, $bot ) {
+					if ( '' !== $bot && ( $entry['bot'] ?? '' ) !== $bot ) {
+						return false;
+					}
+					return ! $errors_only || self::is_error( (array) $entry );
+				}
+			);
+		}
+		return array_slice( array_values( $log ), 0, $limit );
+	}
+
+	/**
+	 * Whether an entry was answered with an error status. Entries logged
+	 * before status codes were recorded have none and are not errors.
+	 */
+	public static function is_error( array $entry ): bool {
+		return isset( $entry['status'] ) && (int) $entry['status'] >= 400;
+	}
+
+	/**
+	 * The recognised crawler name matching $name, or '' if it is not one.
+	 */
+	public static function known_bot( string $name ): string {
+		foreach ( self::BOTS as $bot ) {
+			if ( 0 === strcasecmp( $bot, $name ) ) {
+				return $bot;
+			}
+		}
+		return '';
 	}
 
 	/**
@@ -219,8 +254,7 @@ class AEOMATIC_Crawler_Log {
 			++$rows[ $bot ]['visits'];
 
 			if ( isset( $entry['status'] ) ) {
-				$status = (int) $entry['status'];
-				if ( $status >= 400 ) {
+				if ( self::is_error( (array) $entry ) ) {
 					++$rows[ $bot ]['errors'];
 				} else {
 					++$rows[ $bot ]['ok'];

@@ -176,7 +176,9 @@ $aeomatic_band = static function ( $score ): string {
 							<td><?php echo (int) $aeomatic_row['visits']; ?></td>
 							<td>
 								<?php if ( $aeomatic_row['errors'] > 0 ) : ?>
-									<span class="aeob-pill aeob-pill--err"><?php echo (int) $aeomatic_row['errors']; ?></span>
+									<a class="aeob-pill aeob-pill--err" style="text-decoration:none;"
+										href="<?php echo esc_url( add_query_arg( array( 'page' => AEOMATIC_Admin::SLUG_ACTIVITY, 'crawler_errors' => 1, 'crawler_bot' => $aeomatic_row['bot'] ), admin_url( 'admin.php' ) ) . '#aeomatic-crawler-visits' ); ?>"
+										title="<?php esc_attr_e( 'See which URLs got an error', 'aeomatic' ); ?>"><?php echo (int) $aeomatic_row['errors']; ?></a>
 								<?php else : ?>
 									&mdash;
 								<?php endif; ?>

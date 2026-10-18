@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.7
+Stable tag: 1.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -75,7 +75,7 @@ Settings pages tell you what you asked for. **AI Access** tells you what happens
 
 * **AI crawler control** — per-bot Allow/Disallow toggles in `robots.txt` for 18 AI crawlers: GPTBot, ChatGPT-User, OAI-SearchBot, ClaudeBot, Claude-User, Claude-SearchBot, PerplexityBot, Perplexity-User, Google-Extended, CCBot, Bytespider, Amazonbot, Applebot-Extended, meta-externalagent, Meta-ExternalFetcher, DeepSeekBot, Cohere-AI, DuckAssistBot. Twenty user agents recognised in the visit log.
 
-* **AI crawler log and breakdown** — which AI bots requested which URLs, what HTTP status you served them, and when. A 404 or 403 being served to OAI-SearchBot is the kind of thing you want to know. Records bot name, URL, user agent and status only: **no IP addresses, no cookies, no visitor data**, nothing leaves your server.
+* **AI crawler log and breakdown** — which AI bots requested which URLs, what HTTP status you served them, and when. A 404 or 403 being served to OAI-SearchBot is the kind of thing you want to know, so an **Errors only** filter lists exactly which URLs failed. Records bot name, URL, user agent and status only: **no IP addresses, no cookies, no visitor data**, nothing leaves your server.
 
 * **Page-builder support** — content is read from Gutenberg, Classic Editor, Elementor, Divi, Beaver Builder, Bricks, Oxygen and WPBakery, plus ACF text, textarea, wysiwyg, repeater and flexible-content fields. Scoring reflects what your pages actually render.
 
@@ -258,6 +258,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.8 =
+Page-builder pages are no longer counted twice, and builder settings, synced patterns and post-listing blocks are now read. The AI crawler log now shows which requests got an error. Scores may change on builder pages; re-run the audit.
+
 = 1.2.7 =
 ACF relationship, post object, page link and link fields now count as internal links, the internal-links check counts relative links and each page once, and the speakable "No matches found" validator error is fixed. Re-run the audit to refresh scores.
 
@@ -289,6 +292,16 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.8 =
+
+* **Fix: page-builder pages were counted twice.** Elementor and Beaver Builder save a copy of the layout into the post content, and Divi and WPBakery pages were read both raw and parsed, so every word and link appeared twice. Each page is now read once. **Word counts and readiness scores on builder pages may go down — that is the correction.**
+* **Fix: Divi and WPBakery content stored in shortcode settings is now read** — module titles, button labels, Divi `header_level` headings, WPBakery custom headings (with their H1–H6 level) and links such as `button_url` and `vc_link`. Raw shortcode text no longer leaks into the analysed content.
+* **Fix: Beaver Builder and Bricks read only page text.** CSS values, colours, IDs and element names are no longer counted as words. Headings keep their level, button and link settings become links, Bricks internal links stored as a post ID resolve to the page URL, and accordion and list rows are read.
+* **Fix: content included from another post is now read** — Elementor global widgets and Template widgets, Bricks Template elements, and Gutenberg synced patterns (reusable blocks). Templates that include themselves are detected and stop.
+* **Fix: Gutenberg Latest Posts, Query Loop and Page List blocks** now count toward internal links. They are rendered when the audit runs in the editor or admin, not on public page views.
+* **New: see which AI crawler requests got an error.** The AI crawler visits table on the **What did we do?** screen now has a Status column (for example *404 Not found*, *403 Blocked*, *503 Server error*), an **Errors only** filter, and a filter per crawler. The error count on the dashboard links straight to the matching requests, with a short note on what each error usually means.
+* Click **Re-run** in the Audit tab, or update a post, to refresh its saved scores.
 
 = 1.2.7 =
 

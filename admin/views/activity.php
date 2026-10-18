@@ -167,36 +167,100 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 		<?php endif; ?>
 	</div>
 
-	<div class="aeob-card">
+	<?php
+	// Read-only view filters: errors only, and/or one crawler.
+	// phpcs:disable WordPress.Security.NonceVerification.Recommended
+	$aeomatic_errors_only = ! empty( $_GET['crawler_errors'] );
+	$aeomatic_bot_filter  = isset( $_GET['crawler_bot'] ) ? AEOMATIC_Crawler_Log::known_bot( sanitize_text_field( wp_unslash( $_GET['crawler_bot'] ) ) ) : '';
+	// phpcs:enable WordPress.Security.NonceVerification.Recommended
+	$aeomatic_visits_url  = static function ( bool $errors, string $bot ): string {
+		$args = array( 'page' => AEOMATIC_Admin::SLUG_ACTIVITY );
+		if ( $errors ) {
+			$args['crawler_errors'] = 1;
+		}
+		if ( '' !== $bot ) {
+			$args['crawler_bot'] = $bot;
+		}
+		return add_query_arg( $args, admin_url( 'admin.php' ) ) . '#aeomatic-crawler-visits';
+	};
+	$aeomatic_error_total = 0;
+	foreach ( AEOMATIC_Crawler_Log::get_breakdown() as $aeomatic_bd_row ) {
+		if ( '' === $aeomatic_bot_filter || $aeomatic_bd_row['bot'] === $aeomatic_bot_filter ) {
+			$aeomatic_error_total += (int) $aeomatic_bd_row['errors'];
+		}
+	}
+	$aeomatic_visit_limit = ( $aeomatic_errors_only || '' !== $aeomatic_bot_filter ) ? 50 : 20;
+	?>
+	<div class="aeob-card" id="aeomatic-crawler-visits">
 		<div class="aeob-card-header">
 			<h2><?php esc_html_e( 'AI crawler visits', 'aeomatic' ); ?></h2>
 			<span class="description">
-				<?php esc_html_e( 'Most recent 20 recognised AI bot visits to your site', 'aeomatic' ); ?>
+				<?php
+				if ( $aeomatic_errors_only ) {
+					/* translators: %d: number of entries shown */
+					echo esc_html( sprintf( __( 'Most recent %d AI crawler requests your site answered with an error', 'aeomatic' ), $aeomatic_visit_limit ) );
+				} else {
+					/* translators: %d: number of entries shown */
+					echo esc_html( sprintf( __( 'Most recent %d recognised AI bot visits to your site', 'aeomatic' ), $aeomatic_visit_limit ) );
+				}
+				?>
 			</span>
 		</div>
 		<?php
 		$aeomatic_bot_summary = AEOMATIC_Crawler_Log::get_summary();
-		$aeomatic_bot_recent  = AEOMATIC_Crawler_Log::get_recent( 20 );
+		$aeomatic_bot_recent  = AEOMATIC_Crawler_Log::get_recent( $aeomatic_visit_limit, $aeomatic_errors_only, $aeomatic_bot_filter );
 		if ( empty( $aeomatic_bot_summary ) ) :
 		?>
 			<p class="description">
 				<?php esc_html_e( 'No AI bot visits recorded yet. Visits are logged the first time a recognised AI crawler hits your site after activation.', 'aeomatic' ); ?>
 			</p>
 		<?php else : ?>
-			<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+			<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
 				<?php foreach ( $aeomatic_bot_summary as $aeomatic_bot_name => $aeomatic_bot_count ) : ?>
-					<span style="background:#f0f0f1;border-radius:4px;padding:4px 10px;font-size:13px;">
+					<a href="<?php echo esc_url( $aeomatic_visits_url( $aeomatic_errors_only, $aeomatic_bot_name === $aeomatic_bot_filter ? '' : (string) $aeomatic_bot_name ) ); ?>"
+						style="background:<?php echo $aeomatic_bot_name === $aeomatic_bot_filter ? '#dbe7f5' : '#f0f0f1'; ?>;border-radius:4px;padding:4px 10px;font-size:13px;color:inherit;text-decoration:none;">
 						<code><?php echo esc_html( $aeomatic_bot_name ); ?></code>
 						&nbsp;<strong><?php echo esc_html( number_format_i18n( $aeomatic_bot_count ) ); ?></strong>
 						<?php esc_html_e( 'visit(s)', 'aeomatic' ); ?>
-					</span>
+					</a>
 				<?php endforeach; ?>
 			</div>
+			<ul class="subsubsub" style="float:none;margin:0 0 12px;">
+				<li>
+					<a href="<?php echo esc_url( $aeomatic_visits_url( false, $aeomatic_bot_filter ) ); ?>" <?php echo $aeomatic_errors_only ? '' : 'class="current" aria-current="page"'; ?>><?php esc_html_e( 'All visits', 'aeomatic' ); ?></a> |
+				</li>
+				<li>
+					<a href="<?php echo esc_url( $aeomatic_visits_url( true, $aeomatic_bot_filter ) ); ?>" <?php echo $aeomatic_errors_only ? 'class="current" aria-current="page"' : ''; ?>>
+						<?php esc_html_e( 'Errors only', 'aeomatic' ); ?>
+						<span class="count">(<?php echo esc_html( number_format_i18n( $aeomatic_error_total ) ); ?>)</span>
+					</a>
+				</li>
+				<?php if ( '' !== $aeomatic_bot_filter ) : ?>
+					<li>
+						&nbsp;&middot;&nbsp;
+						<?php
+						/* translators: %s: crawler name */
+						echo esc_html( sprintf( __( 'Showing %s only.', 'aeomatic' ), $aeomatic_bot_filter ) );
+						?>
+						<a href="<?php echo esc_url( $aeomatic_visits_url( $aeomatic_errors_only, '' ) ); ?>"><?php esc_html_e( 'Show all crawlers', 'aeomatic' ); ?></a>
+					</li>
+				<?php endif; ?>
+			</ul>
+			<?php if ( empty( $aeomatic_bot_recent ) ) : ?>
+				<p class="description">
+					<?php
+					echo $aeomatic_errors_only
+						? esc_html__( 'No errors logged: every recorded request got a normal response.', 'aeomatic' )
+						: esc_html__( 'No visits match this filter.', 'aeomatic' );
+					?>
+				</p>
+			<?php else : ?>
 			<table class="widefat striped">
 				<thead>
 					<tr>
 						<th style="width:140px;"><?php esc_html_e( 'Bot', 'aeomatic' ); ?></th>
 						<th><?php esc_html_e( 'URL visited', 'aeomatic' ); ?></th>
+						<th style="width:150px;"><?php esc_html_e( 'Status', 'aeomatic' ); ?></th>
 						<th style="width:160px;"><?php esc_html_e( 'When', 'aeomatic' ); ?></th>
 					</tr>
 				</thead>
@@ -205,6 +269,43 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 						<tr>
 							<td><code><?php echo esc_html( $aeomatic_visit['bot'] ?? '' ); ?></code></td>
 							<td><?php echo esc_html( $aeomatic_visit['url'] ?? '' ); ?></td>
+							<td>
+								<?php
+								if ( ! isset( $aeomatic_visit['status'] ) ) {
+									echo '&mdash;';
+								} else {
+									$aeomatic_status = (int) $aeomatic_visit['status'];
+									if ( $aeomatic_status >= 500 ) {
+										$aeomatic_status_label = __( 'Server error', 'aeomatic' );
+									} elseif ( 429 === $aeomatic_status ) {
+										$aeomatic_status_label = __( 'Rate limited', 'aeomatic' );
+									} elseif ( 404 === $aeomatic_status || 410 === $aeomatic_status ) {
+										$aeomatic_status_label = __( 'Not found', 'aeomatic' );
+									} elseif ( 401 === $aeomatic_status || 403 === $aeomatic_status ) {
+										$aeomatic_status_label = __( 'Blocked', 'aeomatic' );
+									} elseif ( $aeomatic_status >= 400 ) {
+										$aeomatic_status_label = __( 'Error', 'aeomatic' );
+									} elseif ( $aeomatic_status >= 300 ) {
+										$aeomatic_status_label = __( 'Redirect', 'aeomatic' );
+									} else {
+										$aeomatic_status_label = __( 'OK', 'aeomatic' );
+									}
+									if ( $aeomatic_status >= 400 ) {
+										$aeomatic_status_class = 'aeob-pill--err';
+									} elseif ( $aeomatic_status >= 300 ) {
+										$aeomatic_status_class = 'aeob-pill--muted';
+									} else {
+										$aeomatic_status_class = 'aeob-pill--ok';
+									}
+									printf(
+										'<span class="aeob-pill %1$s">%2$d %3$s</span>',
+										esc_attr( $aeomatic_status_class ),
+										(int) $aeomatic_status,
+										esc_html( $aeomatic_status_label )
+									);
+								}
+								?>
+							</td>
 							<td>
 								<?php
 								$aeomatic_visit_time = (int) ( $aeomatic_visit['time'] ?? 0 );
@@ -218,6 +319,12 @@ $aeomatic_days_active   = $aeomatic_installed_at ? max( 1, (int) floor( ( time()
 					<?php endforeach; ?>
 				</tbody>
 			</table>
+			<?php endif; ?>
+			<?php if ( $aeomatic_error_total > 0 ) : ?>
+				<p class="description" style="margin-top:12px;">
+					<?php esc_html_e( 'What the errors mean: 404 or 410 — the page does not exist (an old link, a typo, or a URL an AI tool guessed); add a redirect if a real page moved. 401 or 403 — a security plugin or server rule blocked the crawler; run the crawler check on the AI Access screen. 429 — rate limited. 500 or above — a server error at that moment. Requests blocked before WordPress loads, for example by a CDN or server firewall, are not logged here.', 'aeomatic' ); ?>
+				</p>
+			<?php endif; ?>
 		<?php endif; ?>
 	</div>
 

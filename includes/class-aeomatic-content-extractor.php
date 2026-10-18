@@ -52,61 +52,62 @@ class AEOMATIC_Content_Extractor {
 			return self::$cache[ $post->ID ];
 		}
 
-		$builder = self::detect_builder( $post );
+		$builder    = self::detect_builder( $post );
+		$raw        = (string) $post->post_content;
 		$html_parts = array();
 		$faqs       = array();
 
-		// 1. Standard post_content (Gutenberg, Classic).
-		if ( ! empty( $post->post_content ) ) {
-			$html_parts[] = (string) $post->post_content;
-			$faqs = array_merge( $faqs, self::extract_gutenberg_faqs( $post->post_content ) );
+		// FAQs written into post_content (Gutenberg blocks, Classic shortcodes).
+		if ( '' !== $raw ) {
+			$faqs = array_merge( $faqs, self::extract_gutenberg_faqs( $raw ) );
 			// Classic-editor FAQ shortcodes ([aeo_qa] inside [aeo_faq]).
 			if ( class_exists( 'AEOMATIC_Shortcodes' ) ) {
-				$faqs = array_merge( $faqs, AEOMATIC_Shortcodes::extract_pairs( $post->post_content ) );
+				$faqs = array_merge( $faqs, AEOMATIC_Shortcodes::extract_pairs( $raw ) );
 			}
 		}
 
-		// 2. Page-builder-specific content extraction.
+		// 1. Page-builder-specific content extraction.
+		$builder_html = '';
 		switch ( $builder ) {
 			case 'elementor':
-				$elementor_html = self::extract_elementor( $post );
-				if ( $elementor_html ) {
-					$html_parts[] = $elementor_html;
-				}
+				$builder_html = self::extract_elementor( $post );
 				$faqs = array_merge( $faqs, self::extract_elementor_faqs( $post ) );
 				break;
 			case 'divi':
-				$divi_html = self::extract_divi( $post );
-				if ( $divi_html ) {
-					$html_parts[] = $divi_html;
-				}
-				$faqs = array_merge( $faqs, self::extract_divi_faqs( (string) $post->post_content ) );
+				$builder_html = self::extract_divi( $post );
+				$faqs = array_merge( $faqs, self::extract_divi_faqs( $raw ) );
 				break;
 			case 'beaver':
-				$bb_html = self::extract_beaver_builder( $post );
-				if ( $bb_html ) {
-					$html_parts[] = $bb_html;
-				}
+				$builder_html = self::extract_beaver_builder( $post );
 				break;
 			case 'bricks':
-				$bricks_html = self::extract_bricks( $post );
-				if ( $bricks_html ) {
-					$html_parts[] = $bricks_html;
-				}
+				$builder_html = self::extract_bricks( $post );
 				break;
 			case 'oxygen':
-				$oxygen_html = self::extract_oxygen( $post );
-				if ( $oxygen_html ) {
-					$html_parts[] = $oxygen_html;
-				}
+				$builder_html = self::extract_oxygen( $post );
 				break;
 			case 'wpbakery':
-				$wpb_html = self::extract_wpbakery( $post );
-				if ( $wpb_html ) {
-					$html_parts[] = $wpb_html;
-				}
-				$faqs = array_merge( $faqs, self::extract_wpbakery_faqs( (string) $post->post_content ) );
+				$builder_html = self::extract_wpbakery( $post );
+				$faqs = array_merge( $faqs, self::extract_wpbakery_faqs( $raw ) );
 				break;
+		}
+
+		// 2. post_content — once. Divi and WPBakery content is post_content
+		//    already parsed above. Elementor and Beaver Builder save a rendered
+		//    copy of the layout into post_content, so reading both counted every
+		//    word twice; post_content is only the fallback when the builder data
+		//    yields nothing. Gutenberg also gets synced patterns and dynamic
+		//    post-listing blocks, whose links are not in the saved markup.
+		$parses_raw = in_array( $builder, array( 'divi', 'wpbakery' ), true );
+		$owns_page  = in_array( $builder, array( 'elementor', 'beaver', 'bricks', 'oxygen' ), true );
+		if ( '' !== $raw && ! $parses_raw && ! ( $owns_page && '' !== $builder_html ) ) {
+			$html_parts[] = $raw;
+			if ( 'gutenberg' === $builder ) {
+				$html_parts[] = self::gutenberg_extras( $raw );
+			}
+		}
+		if ( '' !== $builder_html ) {
+			$html_parts[] = $builder_html;
 		}
 
 		// 3. ACF fields (any text-type fields).
@@ -563,7 +564,7 @@ class AEOMATIC_Content_Extractor {
 		if ( ! function_exists( 'get_field_objects' ) ) {
 			return array();
 		}
-		if ( ! self::is_safe_acf_context() ) {
+		if ( ! self::is_safe_render_context() ) {
 			return array();
 		}
 		$fields = get_field_objects( $post->ID );
@@ -771,18 +772,73 @@ class AEOMATIC_Content_Extractor {
 	 * heading_text, description, etc.).
 	 */
 	private static function extract_elementor( WP_Post $post ): string {
-		$data = get_post_meta( $post->ID, '_elementor_data', true );
-		if ( empty( $data ) ) {
+		$decoded = self::elementor_tree( $post->ID );
+		if ( ! $decoded ) {
 			return '';
+		}
+		$buf     = array();
+		$entered = self::enter_reference( 'elementor', $post->ID );
+		self::walk_elementor( $decoded, $buf );
+		if ( $entered ) {
+			self::leave_reference( 'elementor', $post->ID );
+		}
+		return implode( "\n", $buf );
+	}
+
+	/**
+	 * Decoded _elementor_data tree of a post or library template.
+	 */
+	private static function elementor_tree( int $post_id ): array {
+		$data = get_post_meta( $post_id, '_elementor_data', true );
+		if ( empty( $data ) ) {
+			return array();
 		}
 		// Elementor stores it as a JSON string (already escaped).
 		$decoded = json_decode( is_string( $data ) ? $data : wp_json_encode( $data ), true );
-		if ( ! is_array( $decoded ) ) {
-			return '';
+		return is_array( $decoded ) ? $decoded : array();
+	}
+
+	/**
+	 * Library post an Elementor node pulls its content from, or 0.
+	 *   Global widget:   {"widgetType":"global","templateID":123}
+	 *   Template widget: {"widgetType":"template","settings":{"template_id":"123"}}
+	 *   Shortcode widget containing [elementor-template id="123"]
+	 */
+	private static function elementor_template_ref( array $node ): int {
+		$type = (string) ( $node['widgetType'] ?? '' );
+		if ( 'global' === $type && ! empty( $node['templateID'] ) ) {
+			return (int) $node['templateID'];
 		}
-		$buf = array();
-		self::walk_elementor( $decoded, $buf );
-		return implode( "\n", $buf );
+		$settings = isset( $node['settings'] ) && is_array( $node['settings'] ) ? $node['settings'] : array();
+		if ( 'template' === $type && ! empty( $settings['template_id'] ) ) {
+			return (int) $settings['template_id'];
+		}
+		if ( 'shortcode' === $type && ! empty( $settings['shortcode'] ) && is_string( $settings['shortcode'] )
+			&& preg_match( '/\[elementor-template\s+id=["\']?(\d+)/i', $settings['shortcode'], $m ) ) {
+			return (int) $m[1];
+		}
+		return 0;
+	}
+
+	/**
+	 * Re-entry guard for content pulled from another post (templates, synced
+	 * patterns): stops a template that includes itself, and caps nesting.
+	 *
+	 * @var array<string,bool>
+	 */
+	private static $open_refs = array();
+
+	private static function enter_reference( string $kind, int $id ): bool {
+		$key = $kind . ':' . $id;
+		if ( $id <= 0 || isset( self::$open_refs[ $key ] ) || count( self::$open_refs ) >= 5 ) {
+			return false;
+		}
+		self::$open_refs[ $key ] = true;
+		return true;
+	}
+
+	private static function leave_reference( string $kind, int $id ): void {
+		unset( self::$open_refs[ $kind . ':' . $id ] );
 	}
 
 	private static function walk_elementor( array $nodes, array &$buf ): void {
@@ -801,6 +857,18 @@ class AEOMATIC_Content_Extractor {
 			if ( ! is_array( $node ) ) {
 				continue;
 			}
+
+			// Global widgets and Template widgets keep their content in an
+			// Elementor library post, not in this page's data.
+			$template_id = self::elementor_template_ref( $node );
+			if ( $template_id && self::enter_reference( 'elementor', $template_id ) ) {
+				$tree = self::elementor_tree( $template_id );
+				if ( $tree ) {
+					self::walk_elementor( $tree, $buf );
+				}
+				self::leave_reference( 'elementor', $template_id );
+			}
+
 			if ( ! empty( $node['settings'] ) && is_array( $node['settings'] ) ) {
 				$settings = $node['settings'];
 
@@ -930,17 +998,12 @@ class AEOMATIC_Content_Extractor {
 	}
 
 	/**
-	 * Divi stores content as shortcodes inside post_content. Strip the
-	 * shortcode wrappers and keep the inner text.
+	 * Divi stores content as shortcodes inside post_content. Keep the inner
+	 * text and rebuild what lives in shortcode attributes (module titles,
+	 * button labels, link URLs), which stripping the tags used to discard.
 	 */
 	private static function extract_divi( WP_Post $post ): string {
-		$content = (string) $post->post_content;
-		if ( ! $content ) {
-			return '';
-		}
-		// Remove all [et_pb_...] shortcode tags but keep their inner content.
-		$cleaned = preg_replace( '/\[\/?et_pb_[^\]]*\]/i', ' ', $content );
-		return is_string( $cleaned ) ? $cleaned : '';
+		return self::parse_builder_shortcodes( (string) $post->post_content, 'et_pb_' );
 	}
 
 	/**
@@ -956,12 +1019,10 @@ class AEOMATIC_Content_Extractor {
 			if ( ! is_object( $node ) && ! is_array( $node ) ) {
 				continue;
 			}
-			$node = (array) $node;
+			$node     = (array) $node;
 			$settings = isset( $node['settings'] ) ? (array) $node['settings'] : array();
-			foreach ( $settings as $key => $val ) {
-				if ( is_string( $val ) && '' !== trim( $val ) ) {
-					$buf[] = $val;
-				}
+			if ( $settings ) {
+				self::collect_builder_settings( $settings, $buf );
 			}
 		}
 		return implode( "\n", $buf );
@@ -975,9 +1036,279 @@ class AEOMATIC_Content_Extractor {
 		if ( empty( $data ) || ! is_array( $data ) ) {
 			return '';
 		}
-		$buf = array();
-		self::walk_generic_settings( $data, $buf );
+		$buf     = array();
+		$entered = self::enter_reference( 'bricks', $post->ID );
+		self::walk_bricks( $data, $buf );
+		if ( $entered ) {
+			self::leave_reference( 'bricks', $post->ID );
+		}
 		return implode( "\n", $buf );
+	}
+
+	/**
+	 * Walk Bricks elements. Template elements pull in the template's own
+	 * elements, which live on the bricks_template post.
+	 */
+	private static function walk_bricks( array $elements, array &$buf ): void {
+		foreach ( $elements as $el ) {
+			if ( ! is_array( $el ) ) {
+				continue;
+			}
+			$settings = isset( $el['settings'] ) && is_array( $el['settings'] ) ? $el['settings'] : array();
+			if ( 'template' === ( $el['name'] ?? '' ) && ! empty( $settings['template'] ) ) {
+				$tid = (int) $settings['template'];
+				if ( self::enter_reference( 'bricks', $tid ) ) {
+					$tpl = get_post_meta( $tid, '_bricks_page_content_2', true );
+					if ( is_array( $tpl ) ) {
+						self::walk_bricks( $tpl, $buf );
+					}
+					self::leave_reference( 'bricks', $tid );
+				}
+				continue;
+			}
+			if ( $settings ) {
+				self::collect_builder_settings( $settings, $buf );
+			}
+		}
+	}
+
+	/**
+	 * Setting keys whose string value is visible page text.
+	 */
+	const SETTING_TEXT_KEYS = array(
+		'text', 'html', 'content', 'heading', 'title', 'subtitle', 'sub_heading',
+		'description', 'label', 'btn_text', 'button_text', 'cta_text', 'caption',
+		'question', 'answer', 'name', 'quote', 'testimonial', 'item_title', 'item_content',
+	);
+
+	/**
+	 * Setting keys that hold styling or configuration, never page text.
+	 */
+	const SETTING_SKIP_RE = '/(color|font|typography|size|unit|padding|margin|border|align|width|height|class|^id$|_id$|animation|responsive|visibility|style|layout|^type$|target|nofollow|family|weight|spacing|transform|position|opacity|shadow|radius|gradient|icon|_src$|^src$|crop|ratio|speed|delay|duration|order|columns|hover|css|attr|tag$)/i';
+
+	/**
+	 * Collect page text, headings and links from a page-builder settings
+	 * array (Beaver Builder module settings, Bricks element settings).
+	 *
+	 * Only text-bearing keys are read, so CSS values, IDs and options are no
+	 * longer counted as words. Headings keep their level ("tag": "h2") and
+	 * links become anchors, including Bricks internal links stored as a post
+	 * ID. The setting that labels a link is emitted inside the anchor only.
+	 */
+	private static function collect_builder_settings( array $settings, array &$buf, int $depth = 0 ): void {
+		if ( $depth > 6 ) {
+			return;
+		}
+		$consumed = array();
+
+		// Heading with its level: Beaver Builder heading + tag, Bricks text + tag.
+		$tag = isset( $settings['tag'] ) && is_string( $settings['tag'] ) ? strtolower( trim( $settings['tag'] ) ) : '';
+		if ( preg_match( '/^h[1-6]$/', $tag ) ) {
+			foreach ( array( 'heading', 'text', 'title' ) as $hk ) {
+				if ( ! empty( $settings[ $hk ] ) && is_string( $settings[ $hk ] ) ) {
+					$buf[]      = sprintf( '<%1$s>%2$s</%1$s>', $tag, esc_html( wp_strip_all_tags( $settings[ $hk ] ) ) );
+					$consumed[] = $hk;
+					break;
+				}
+			}
+		}
+
+		// Links, labelled by the first plain-text label setting.
+		$urls = self::setting_links( $settings );
+		if ( $urls ) {
+			$label = '';
+			foreach ( array( 'btn_text', 'button_text', 'cta_text', 'label', 'text', 'title', 'heading' ) as $lk ) {
+				if ( ! empty( $settings[ $lk ] ) && is_string( $settings[ $lk ] ) && wp_strip_all_tags( $settings[ $lk ] ) === $settings[ $lk ] ) {
+					$label = $settings[ $lk ];
+					if ( ! in_array( $lk, $consumed, true ) ) {
+						$consumed[] = $lk;
+					}
+					break;
+				}
+			}
+			foreach ( $urls as $url ) {
+				$buf[] = sprintf( '<a href="%s">%s</a>', esc_url( $url ), esc_html( '' !== $label ? $label : $url ) );
+			}
+		}
+
+		foreach ( $settings as $key => $val ) {
+			$key = (string) $key;
+			if ( '' === $key || '_' === $key[0] || in_array( $key, $consumed, true ) ) {
+				continue; // Bricks keeps all styling under "_"-prefixed keys.
+			}
+			if ( is_object( $val ) ) {
+				$val = (array) $val;
+			}
+			if ( is_array( $val ) ) {
+				if ( 'link' === $key ) {
+					continue; // Read by setting_links().
+				}
+				// Repeater rows (accordion items, list items) or a nested group.
+				$is_list = array_keys( $val ) === range( 0, count( $val ) - 1 );
+				foreach ( $is_list ? $val : array( $val ) as $row ) {
+					if ( is_object( $row ) ) {
+						$row = (array) $row;
+					}
+					if ( is_array( $row ) ) {
+						self::collect_builder_settings( $row, $buf, $depth + 1 );
+					}
+				}
+				continue;
+			}
+			if ( ! is_string( $val ) || '' === trim( $val ) || preg_match( self::SETTING_SKIP_RE, $key ) ) {
+				continue;
+			}
+			if ( in_array( $key, self::SETTING_TEXT_KEYS, true ) || preg_match( '/(text|title|content|heading|desc|label)/i', $key ) ) {
+				$buf[] = $val;
+			}
+		}
+	}
+
+	/**
+	 * URLs a builder setting array links to.
+	 *   Bricks:          "link": {"type":"internal","postId":12} or {"type":"external","url":"…"}
+	 *   Beaver Builder:  "link", "btn_link", "link_url": "https://…"
+	 *
+	 * @return string[]
+	 */
+	private static function setting_links( array $settings ): array {
+		$urls = array();
+		$link = $settings['link'] ?? null;
+		if ( is_object( $link ) ) {
+			$link = (array) $link;
+		}
+		if ( is_array( $link ) ) {
+			if ( 'internal' === ( $link['type'] ?? '' ) && ! empty( $link['postId'] ) ) {
+				$urls[] = (string) get_permalink( (int) $link['postId'] );
+			} elseif ( ! empty( $link['url'] ) && is_string( $link['url'] ) ) {
+				$urls[] = $link['url'];
+			}
+		}
+		foreach ( $settings as $key => $val ) {
+			if ( is_string( $key ) && is_string( $val ) && self::is_link_key( $key ) && self::looks_like_link( $val ) ) {
+				$urls[] = trim( $val );
+			}
+		}
+		return array_values( array_unique( array_filter( $urls ) ) );
+	}
+
+	/**
+	 * A setting/attribute name that holds a page link (not an image or video source).
+	 */
+	private static function is_link_key( string $key ): bool {
+		return (bool) preg_match( '/(^|_)(url|link)$/i', $key )
+			&& ! preg_match( '/(image|img|photo_src|video|src|bg|background|logo|icon|font|mp4|webm)/i', $key );
+	}
+
+	/**
+	 * An absolute http(s) or root-relative URL that is not a media file.
+	 */
+	private static function looks_like_link( string $value ): bool {
+		$value = trim( $value );
+		return (bool) preg_match( '#^(https?://|/(?!/))#i', $value )
+			&& ! preg_match( '#\.(jpe?g|png|gif|webp|svg|avif|mp4|webm|mov|mp3)(\?.*)?$#i', $value );
+	}
+
+	/**
+	 * Turn builder shortcodes into readable HTML: each opening tag becomes the
+	 * text, heading and links held in its attributes, closing tags are dropped,
+	 * and the inner text stays where it is.
+	 *
+	 * @param string $prefix_re Regex fragment for the shortcode name prefix.
+	 */
+	private static function parse_builder_shortcodes( string $content, string $prefix_re ): string {
+		if ( '' === $content ) {
+			return '';
+		}
+		$out = preg_replace_callback(
+			'/\[(\/?)(' . $prefix_re . '[a-z0-9_]*)\b([^\]]*)\]/i',
+			static function ( array $m ): string {
+				if ( '/' === $m[1] ) {
+					return ' ';
+				}
+				$atts = function_exists( 'shortcode_parse_atts' ) ? shortcode_parse_atts( rtrim( trim( $m[3] ), '/' ) ) : array();
+				$html = self::shortcode_attr_html( is_array( $atts ) ? $atts : array() );
+				return '' === $html ? ' ' : "\n" . $html . "\n";
+			},
+			$content
+		);
+		return is_string( $out ) ? $out : '';
+	}
+
+	/**
+	 * Shortcode attributes that hold visible text.
+	 */
+	const SHORTCODE_TEXT_ATTRS = array(
+		'title', 'heading', 'subhead', 'subtitle', 'text', 'button_text', 'button_one_text',
+		'button_two_text', 'name', 'position', 'company_name', 'author', 'job_title', 'caption',
+		'description', 'quote', 'label',
+	);
+
+	/**
+	 * Text, heading and links carried in one builder shortcode's attributes.
+	 *   Divi:      title="…" header_level="h2" button_url="…" button_text="…"
+	 *   WPBakery:  text="…" font_container="tag:h2|…" link="url:https%3A%2F%2F…|title:…"
+	 */
+	private static function shortcode_attr_html( array $atts ): string {
+		// Divi encodes quotes and square brackets inside attribute values.
+		foreach ( $atts as $k => $v ) {
+			if ( is_string( $v ) ) {
+				$atts[ $k ] = str_replace( array( '%22', '%91', '%93' ), array( '"', '[', ']' ), $v );
+			}
+		}
+
+		$urls = array();
+		foreach ( $atts as $k => $v ) {
+			if ( ! is_string( $k ) || ! is_string( $v ) || '' === trim( $v ) ) {
+				continue;
+			}
+			if ( preg_match( '/^url:([^|]+)/', $v, $vm ) ) {
+				$urls[] = rawurldecode( $vm[1] ); // WPBakery vc_link value.
+			} elseif ( self::is_link_key( $k ) && self::looks_like_link( $v ) ) {
+				$urls[] = trim( $v );
+			}
+		}
+		$urls = array_values( array_unique( $urls ) );
+
+		$tag = '';
+		if ( isset( $atts['header_level'] ) && is_string( $atts['header_level'] ) && preg_match( '/^h[1-6]$/i', $atts['header_level'] ) ) {
+			$tag = strtolower( $atts['header_level'] );
+		} elseif ( isset( $atts['font_container'] ) && is_string( $atts['font_container'] ) && preg_match( '/(?:^|\|)tag:(h[1-6])\b/i', $atts['font_container'], $tm ) ) {
+			$tag = strtolower( $tm[1] );
+		}
+
+		// The link label is printed inside the anchor only.
+		$label_key = '';
+		if ( $urls ) {
+			foreach ( array( 'button_text', 'button_one_text', 'title', 'text', 'label' ) as $lk ) {
+				if ( ! empty( $atts[ $lk ] ) && is_string( $atts[ $lk ] ) ) {
+					$label_key = $lk;
+					break;
+				}
+			}
+		}
+
+		$parts = array();
+		foreach ( self::SHORTCODE_TEXT_ATTRS as $k ) {
+			if ( $k === $label_key || empty( $atts[ $k ] ) || ! is_string( $atts[ $k ] ) ) {
+				continue;
+			}
+			$val = trim( wp_strip_all_tags( $atts[ $k ] ) );
+			if ( '' === $val ) {
+				continue;
+			}
+			if ( '' !== $tag && in_array( $k, array( 'title', 'heading', 'text' ), true ) ) {
+				$parts[] = sprintf( '<%1$s>%2$s</%1$s>', $tag, esc_html( $val ) );
+				$tag     = '';
+			} else {
+				$parts[] = esc_html( $val );
+			}
+		}
+		$label = '' !== $label_key ? wp_strip_all_tags( $atts[ $label_key ] ) : '';
+		foreach ( $urls as $url ) {
+			$parts[] = sprintf( '<a href="%s">%s</a>', esc_url( $url ), esc_html( '' !== $label ? $label : $url ) );
+		}
+		return implode( "\n", $parts );
 	}
 
 	/**
@@ -994,25 +1325,67 @@ class AEOMATIC_Content_Extractor {
 	}
 
 	/**
-	 * WPBakery uses [vc_*] shortcodes inline in post_content.
+	 * WPBakery uses [vc_*] shortcodes inline in post_content. Custom headings,
+	 * button labels and vc_link URLs live in attributes, so they are parsed
+	 * the same way as Divi's.
 	 */
 	private static function extract_wpbakery( WP_Post $post ): string {
-		$content = (string) $post->post_content;
-		$cleaned = preg_replace( '/\[\/?(vc|kc)_[^\]]*\]/i', ' ', $content );
-		return is_string( $cleaned ) ? $cleaned : '';
+		return self::parse_builder_shortcodes( (string) $post->post_content, '(?:vc|kc)_' );
 	}
 
 	/**
-	 * Walk an arbitrary settings array and collect all string values.
+	 * Post-listing blocks rendered on the server, whose links are not in the
+	 * saved markup.
 	 */
-	private static function walk_generic_settings( array $arr, array &$buf ): void {
-		foreach ( $arr as $val ) {
-			if ( is_string( $val ) && '' !== trim( $val ) ) {
-				$buf[] = $val;
-			} elseif ( is_array( $val ) ) {
-				self::walk_generic_settings( $val, $buf );
-			} elseif ( is_object( $val ) ) {
-				self::walk_generic_settings( (array) $val, $buf );
+	const DYNAMIC_LINK_BLOCKS = array( 'core/latest-posts', 'core/query', 'core/page-list' );
+
+	/**
+	 * Content Gutenberg shows that the saved post_content does not contain:
+	 * synced patterns (stored in their own wp_block post) and post-listing
+	 * blocks such as Latest Posts and Query Loop.
+	 *
+	 * Dynamic blocks are only rendered outside a live front-end render
+	 * (admin, REST, cron, CLI), the same rule as the ACF cache.
+	 */
+	private static function gutenberg_extras( string $content ): string {
+		if ( ! function_exists( 'parse_blocks' ) || false === strpos( $content, '<!-- wp:' ) ) {
+			return '';
+		}
+		$buf = array();
+		self::walk_blocks_for_extras( parse_blocks( $content ), $buf );
+		return implode( "\n", $buf );
+	}
+
+	private static function walk_blocks_for_extras( array $blocks, array &$buf ): void {
+		foreach ( $blocks as $block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+			$name  = (string) ( $block['blockName'] ?? '' );
+			$attrs = isset( $block['attrs'] ) && is_array( $block['attrs'] ) ? $block['attrs'] : array();
+
+			if ( 'core/block' === $name && ! empty( $attrs['ref'] ) ) {
+				$ref     = (int) $attrs['ref'];
+				$pattern = get_post( $ref );
+				if ( $pattern instanceof WP_Post && 'wp_block' === $pattern->post_type && 'publish' === $pattern->post_status
+					&& self::enter_reference( 'block', $ref ) ) {
+					$buf[] = (string) $pattern->post_content;
+					self::walk_blocks_for_extras( parse_blocks( (string) $pattern->post_content ), $buf );
+					self::leave_reference( 'block', $ref );
+				}
+				continue;
+			}
+
+			// A Query Loop that inherits the page's query lists whatever the
+			// current request shows, which is not this post's own content.
+			if ( in_array( $name, self::DYNAMIC_LINK_BLOCKS, true ) && empty( $attrs['query']['inherit'] )
+				&& function_exists( 'render_block' ) && self::is_safe_render_context() ) {
+				$buf[] = (string) render_block( $block );
+				continue;
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) && is_array( $block['innerBlocks'] ) ) {
+				self::walk_blocks_for_extras( $block['innerBlocks'], $buf );
 			}
 		}
 	}
@@ -1049,7 +1422,7 @@ class AEOMATIC_Content_Extractor {
 
 		// Cache empty — only build it in a safe context. A live frontend
 		// render (wp_head) is not safe; return empty and let save_post fill it.
-		if ( ! self::is_safe_acf_context() ) {
+		if ( ! self::is_safe_render_context() ) {
 			return '';
 		}
 
@@ -1080,7 +1453,7 @@ class AEOMATIC_Content_Extractor {
 	 * Contexts where it's safe to call get_field_objects() — i.e. not during a
 	 * live frontend page render where the theme will iterate ACF data after us.
 	 */
-	private static function is_safe_acf_context(): bool {
+	private static function is_safe_render_context(): bool {
 		if ( is_admin() ) {
 			return true;
 		}
