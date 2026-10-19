@@ -147,6 +147,12 @@ $crawler_groups = array(
 					<h1><?php esc_html_e( 'Let\'s make your site readable to AI search.', 'aeomatic' ); ?></h1>
 					<p><?php esc_html_e( 'This takes about a minute. We\'ll import what you already have, fill in the gaps, and prove it works.', 'aeomatic' ); ?></p>
 				</div>
+				<p style="margin:0 0 16px;">
+					<a class="button" href="https://www.youtube.com/watch?v=8MZICDVxbFc" target="_blank" rel="noopener noreferrer">
+						&#9654; <?php esc_html_e( 'Watch the intro video', 'aeomatic' ); ?>
+						<span class="screen-reader-text"><?php esc_html_e( '(opens YouTube in a new tab)', 'aeomatic' ); ?></span>
+					</a>
+				</p>
 				<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;">
 					<?php
 					$bullets = array(

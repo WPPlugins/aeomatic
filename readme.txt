@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.8
+Stable tag: 1.2.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,6 +13,8 @@ Can ChatGPT, Perplexity and Google AI read your site? Check AI crawler access, a
 == Description ==
 
 **Can ChatGPT, Perplexity and Google's AI actually read your WordPress site?**
+
+https://www.youtube.com/watch?v=8MZICDVxbFc
 
 Many sites are invisible to AI search for reasons their owners never see: a CDN, firewall or security plugin quietly blocking AI crawlers; content that only appears after JavaScript runs, which the ChatGPT, Claude and Perplexity crawlers do not execute; or pages with nothing a machine can parse. AEOmatic checks for each of these, fixes what a plugin can fix, and tells you plainly about the rest.
 
@@ -258,6 +260,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.2.9 =
+Adds a short intro video to the setup wizard and the AI Readiness dashboard. No changes to scores or settings.
+
 = 1.2.8 =
 Page-builder pages are no longer counted twice, and builder settings, synced patterns and post-listing blocks are now read. The AI crawler log now shows which requests got an error. Scores may change on builder pages; re-run the audit.
 
@@ -292,6 +297,10 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.2.9 =
+
+* **New: intro video.** The setup wizard's welcome step and the AI Readiness dashboard link to a short intro video. It opens on YouTube in a new tab, so the plugin still makes no external calls.
 
 = 1.2.8 =
 
