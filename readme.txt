@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.2.9
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,6 +15,10 @@ Can ChatGPT, Perplexity and Google AI read your site? Check AI crawler access, a
 **Can ChatGPT, Perplexity and Google's AI actually read your WordPress site?**
 
 https://www.youtube.com/watch?v=8MZICDVxbFc
+
+**How AEOmatic works:**
+
+https://www.youtube.com/watch?v=tESLUHAR_R8
 
 Many sites are invisible to AI search for reasons their owners never see: a CDN, firewall or security plugin quietly blocking AI crawlers; content that only appears after JavaScript runs, which the ChatGPT, Claude and Perplexity crawlers do not execute; or pages with nothing a machine can parse. AEOmatic checks for each of these, fixes what a plugin can fix, and tells you plainly about the rest.
 
@@ -260,6 +264,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.3.0 =
+Security release on top of 1.2.9. Fixes a script injection in the JSON-LD preview, password-protected posts leaking into /llms-full.txt, bulk audit running on posts the user cannot edit, missing nonce on review-notice dismiss, and crawler-log URLs growing without bound. robots.txt now keeps your other rules for AI crawlers, respects "Discourage search engines", and the Block PDF files toggle can be turned off again. Entities and Authority scores corrected, non-Latin scripts are now counted as words, Citation Gaps and Rescan work on plain permalinks, and the "Set schema type" quick fix is reinstated. The 1.2.9 intro video on the setup wizard and AI Readiness dashboard is kept. Scores may change — click Re-run in the Audit tab or update a post to refresh. Recommended update.
+
 = 1.2.9 =
 Adds a short intro video to the setup wizard and the AI Readiness dashboard. No changes to scores or settings.
 
@@ -297,6 +304,39 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.3.0 =
+
+Rolls the 1.2.9 intro-video addition together with the security, robots.txt and score fixes shipped on top of it.
+
+**Kept from 1.2.9**
+
+* **Intro video.** The setup wizard's welcome step and the AI Readiness dashboard link to a short intro video. It opens on YouTube in a new tab, so the plugin still makes no external calls.
+
+**Security**
+
+* **Fix: script injection in the JSON-LD preview.** A user with the Contributor role could save schema values that ran as code when an editor or administrator opened **Preview JSON-LD**. The preview now escapes everything it shows, schema field values saved through the WordPress REST API are cleaned the same way as in the editor, and only someone who can edit that post may change them. Scores and scan results can no longer be written through the REST API at all.
+* **Fix: password-protected posts were published in `/llms-full.txt`,** and listed in `/llms.txt`. They are now left out, and schema for a protected post no longer includes anything from its content until it is unlocked. Cached llms.txt files are rebuilt on update.
+* **Fix: the "AEOmatic — refresh audit & gaps" bulk action** now skips posts the current user cannot edit.
+* **Fix: a fake AI crawler user agent could store very long URLs in the crawler log.** Stored URLs are now limited to 255 characters.
+* The review notice's dismiss and snooze links are now nonce-protected.
+
+**robots.txt**
+
+* **Fix: sites set to "Discourage search engines" no longer get Allow rules for AI crawlers.** WordPress blocks every crawler on those sites, and AEOmatic now leaves that alone.
+* **Fix: allowed AI crawlers now keep your other robots.txt rules.** A crawler named in its own group ignores the `User-agent: *` rules, so GPTBot, ClaudeBot and the others skipped `/wp-admin/`, rules from other plugins and AEOmatic's own **Block PDF files** setting. Each allowed crawler's group now repeats those rules.
+* **Fix: "Block PDF files" can be turned off again,** and unticking every crawler now saves.
+
+**Scores and fixes**
+
+* **Fix: the Entities score was too low on almost every post.** It never saw the detected schema type (−30) and asked for an `about` field the schema editor does not have (−15). The Entity Scanner had the same type bug and also missed address, opening hours, offers and phone signals from the schema editor.
+* **Fix: the Authority check "Organization schema" always failed.** It now reads the organization name from Settings.
+* **Fix: posts in Cyrillic, Greek, Arabic, Hebrew, Hindi, Chinese, Japanese and other non-Latin scripts were scored as nearly empty.** Words are now counted in every script.
+* **Fix: on sites with plain permalinks,** the Citation Gaps table did not load, and **Recompute (skip cache)** and **Rescan (skip cache)** failed on the AI Readiness and Entity Scanner screens.
+* **Fix: AI Readiness and Entity Scanner results now refresh** after you change settings, the schema type or schema fields, or the author bio.
+* **Fix: the "Generate from first paragraph" meta description fix no longer replaces a description you wrote** in Yoast SEO, Rank Math, AIOSEO or SEOPress. It fills only empty fields and tells you when yours was kept.
+* **Fix: the "Set schema type" quick fix** in Citation Gaps was never offered and logged a PHP warning.
+* Scores will change after updating. Click **Re-run** in the Audit tab, or update a post, to refresh it.
 
 = 1.2.9 =
 

@@ -156,7 +156,7 @@ class AEOMATIC_Content_Extractor {
 			'html'       => $html,
 			'text'       => $text,
 			'builder'    => $builder,
-			'word_count' => $text ? str_word_count( $text ) : 0,
+			'word_count' => $text ? self::count_words( $text ) : 0,
 			'faqs'       => $faqs,
 		);
 
@@ -203,6 +203,28 @@ class AEOMATIC_Content_Extractor {
 			return 'classic';
 		}
 		return 'unknown';
+	}
+
+	/**
+	 * Count words in any script.
+	 *
+	 * str_word_count() only knows ASCII letters, so Cyrillic, Greek, Arabic,
+	 * Hebrew or Hindi text counted as almost nothing. Words here are runs of
+	 * letters in any alphabet; Chinese and Japanese, written without spaces,
+	 * count one word per character.
+	 */
+	public static function count_words( string $text ): int {
+		if ( '' === $text ) {
+			return 0;
+		}
+		$cjk_re = '/[\p{Han}\p{Hiragana}\p{Katakana}]/u';
+		$cjk    = (int) preg_match_all( $cjk_re, $text );
+		$words  = preg_match_all( '/\p{L}[\p{L}\p{M}\p{N}\'\x{2019}-]*/u', (string) preg_replace( $cjk_re, ' ', $text ) );
+		if ( false === $words ) {
+			// Invalid UTF-8: fall back rather than report zero.
+			return str_word_count( $text );
+		}
+		return $cjk + $words;
 	}
 
 	/**

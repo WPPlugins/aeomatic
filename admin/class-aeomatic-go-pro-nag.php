@@ -31,11 +31,12 @@ class AEOMATIC_Go_Pro_Nag {
 		if ( empty( $_GET['aeomatic_dismiss_go_pro'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( 'manage_options' ) ) {
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		if ( ! current_user_can( 'manage_options' ) || ! wp_verify_nonce( $nonce, 'aeomatic_dismiss_go_pro' ) ) {
 			return;
 		}
 		update_user_meta( get_current_user_id(), self::USER_META_KEY, time() );
-		wp_safe_redirect( remove_query_arg( 'aeomatic_dismiss_go_pro' ) );
+		wp_safe_redirect( remove_query_arg( array( 'aeomatic_dismiss_go_pro', '_wpnonce' ) ) );
 		exit;
 	}
 
@@ -44,7 +45,7 @@ class AEOMATIC_Go_Pro_Nag {
 			return;
 		}
 
-		$dismiss_url = add_query_arg( 'aeomatic_dismiss_go_pro', '1' );
+		$dismiss_url = add_query_arg( array( 'aeomatic_dismiss_go_pro' => '1', '_wpnonce' => wp_create_nonce( 'aeomatic_dismiss_go_pro' ) ) );
 		?>
 		<div class="notice notice-info aeob-go-pro-notice" style="border-left-color:#00d4ff; padding:14px 16px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
 			<div style="flex:1; min-width:260px;">

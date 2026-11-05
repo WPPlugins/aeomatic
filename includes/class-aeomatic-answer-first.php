@@ -179,13 +179,13 @@ class AEOMATIC_Answer_First {
 	/** Is this heading text phrased as a question? */
 	public static function is_question( string $text ): bool {
 		$text = trim( $text );
-		if ( '' === $text || str_word_count( $text ) > 18 ) {
+		if ( '' === $text || AEOMATIC_Content_Extractor::count_words( $text ) > 18 ) {
 			return false;
 		}
 		if ( '?' === substr( $text, -1 ) ) {
 			return true;
 		}
-		return (bool) preg_match( '/^(' . self::QUESTION_WORDS . ')\b/i', $text ) && str_word_count( $text ) >= 3;
+		return (bool) preg_match( '/^(' . self::QUESTION_WORDS . ')\b/i', $text ) && AEOMATIC_Content_Extractor::count_words( $text ) >= 3;
 	}
 
 	/**
@@ -315,7 +315,7 @@ class AEOMATIC_Answer_First {
 		}
 
 		// Concise sentences are easier to quote.
-		$words = str_word_count( $sentence );
+		$words = AEOMATIC_Content_Extractor::count_words( $sentence );
 		if ( $words >= 6 && $words <= 35 ) {
 			$score += 0.5;
 		}
@@ -358,7 +358,7 @@ class AEOMATIC_Answer_First {
 		$out   = array();
 		foreach ( (array) $parts as $p ) {
 			$p = trim( (string) $p );
-			if ( '' !== $p && str_word_count( $p ) >= 3 ) {
+			if ( '' !== $p && AEOMATIC_Content_Extractor::count_words( $p ) >= 3 ) {
 				$out[] = $p;
 			}
 		}

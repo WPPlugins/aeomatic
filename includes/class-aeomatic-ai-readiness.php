@@ -47,7 +47,8 @@ class AEOMATIC_AI_Readiness {
 		if ( empty( $post_types ) ) {
 			$post_types = array( 'post' );
 		}
-		$auth = static function () { return current_user_can( 'edit_posts' ); };
+		// Computed by the plugin: readable over REST, never writable there.
+		$auth = '__return_false';
 
 		foreach ( $post_types as $pt ) {
 			register_post_meta( $pt, self::META_RESULT, array(
@@ -171,7 +172,18 @@ class AEOMATIC_AI_Readiness {
 	}
 
 	private function fingerprint_for( WP_Post $post ): string {
-		return md5( $post->post_content . '|' . $post->post_title . '|' . $post->post_modified_gmt );
+		// Scores also depend on the plugin settings, the schema type and field
+		// overrides (saved without touching post_modified) and the author bio,
+		// so a change to any of them must re-run the analysis.
+		return md5( implode( '|', array(
+			$post->post_content,
+			$post->post_title,
+			$post->post_modified_gmt,
+			(string) get_post_meta( $post->ID, AEOMATIC_Schema_Analyzer::META_OVERRIDE, true ),
+			(string) get_post_meta( $post->ID, AEOMATIC_Schema_Generator::META_OVERRIDES, true ),
+			(string) get_the_author_meta( 'description', (int) $post->post_author ),
+			md5( (string) wp_json_encode( AEOMATIC_Settings::all() ) ),
+		) ) );
 	}
 
 	public function invalidate_on_save( int $post_id, WP_Post $post ): void {

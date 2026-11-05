@@ -234,6 +234,7 @@ settings_errors( 'aeomatic_messages' );
 				<th scope="row"><?php esc_html_e( 'Block PDF files', 'aeomatic' ); ?></th>
 				<td>
 					<label>
+						<input type="hidden" name="aeob[robots][block_pdfs]" value="0" />
 						<input type="checkbox" name="aeob[robots][block_pdfs]" value="1" <?php checked( ! empty( $aeomatic_settings['robots']['block_pdfs'] ) ); ?> />
 						<?php esc_html_e( 'Prevent crawlers from indexing PDF files (adds Disallow: /*.pdf$)', 'aeomatic' ); ?>
 					</label>
@@ -278,6 +279,7 @@ settings_errors( 'aeomatic_messages' );
 					<th scope="row"><code><?php echo esc_html( $aeomatic_bot ); ?></code></th>
 					<td>
 						<label>
+							<input type="hidden" name="aeob[crawlers][<?php echo esc_attr( $aeomatic_bot ); ?>]" value="0" />
 							<input type="checkbox" name="aeob[crawlers][<?php echo esc_attr( $aeomatic_bot ); ?>]" value="1" <?php checked( $aeomatic_allowed ); ?> />
 							<?php esc_html_e( 'Allow access', 'aeomatic' ); ?>
 						</label>

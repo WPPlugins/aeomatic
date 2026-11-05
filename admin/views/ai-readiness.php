@@ -120,7 +120,7 @@ wp_enqueue_script( 'wp-api-fetch' );
 		var id = parseInt( select.value, 10 );
 		if ( ! id ) { return; }
 		root.innerHTML = '<p>' + '<?php echo esc_js( __( 'Analyzing…', 'aeomatic' ) ); ?>' + '</p>';
-		var url = rest + '/' + id + ( force ? '?force=true' : '' );
+		var url = rest + '/' + id + ( force ? ( rest.indexOf( '?' ) > -1 ? '&' : '?' ) + 'force=true' : '' ); // rest_url() already has a '?' with plain permalinks (?rest_route=…).
 		fetch( url, { credentials: 'same-origin', headers: { 'X-WP-Nonce': nonce } } )
 			.then( function ( r ) { return r.json(); } )
 			.then( function ( data ) {

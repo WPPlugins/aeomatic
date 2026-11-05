@@ -183,7 +183,8 @@ class AEOMATIC_Gap_Answer_Shape {
 		}
 
 		$alternatives = (array) ( $analysis['alternatives'] ?? array() );
-		$suggest      = ! empty( $alternatives ) ? (string) $alternatives[0] : '';
+		// type => score map, best first.
+		$suggest      = ! empty( $alternatives ) ? (string) array_key_first( $alternatives ) : '';
 
 		$fix_action = $suggest ? array(
 			'code'   => 'set_schema_type',
@@ -369,7 +370,7 @@ class AEOMATIC_Gap_Answer_Shape {
 			$questions++;
 			// The first paragraph is the answer a snippet would lift.
 			$first = preg_match( '/<p[^>]*>(.*?)<\/p>/is', $section[2], $p ) ? $p[1] : $section[2];
-			$words = str_word_count( wp_strip_all_tags( $first ) );
+			$words = AEOMATIC_Content_Extractor::count_words( wp_strip_all_tags( $first ) );
 			if ( $words < 25 || $words > 70 ) {
 				$off++;
 			}

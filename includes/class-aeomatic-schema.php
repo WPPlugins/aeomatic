@@ -132,8 +132,11 @@ class AEOMATIC_Schema {
 		if ( $post ) {
 			// 3. Primary schema via Generator — merges auto-extracted values
 			//    with any user-edited field overrides from the visual editor.
-			$primary = null;
-			if ( ( 'Product' === $schema_type && class_exists( 'WooCommerce' ) ) || ! empty( $settings['article'] ) ) {
+			// A password-protected post shows only the password form, so
+			// nothing derived from its content is published until unlocked.
+			$protected = post_password_required( $post );
+			$primary   = null;
+			if ( ! $protected && ( ( 'Product' === $schema_type && class_exists( 'WooCommerce' ) ) || ! empty( $settings['article'] ) ) ) {
 				$primary = AEOMATIC_Schema_Generator::generate( $post, $schema_type, $settings ) ?: null;
 			}
 
@@ -157,7 +160,7 @@ class AEOMATIC_Schema {
 			}
 
 			// 6. VideoObject — auto-detected YouTube / Vimeo embeds.
-			$video = $this->video_schema( $post );
+			$video = $protected ? null : $this->video_schema( $post );
 			if ( $video ) {
 				$blocks[] = $video;
 			}
@@ -210,6 +213,9 @@ class AEOMATIC_Schema {
 		// "<\/" — valid JSON, and it leaves "https://" alone because that
 		// is "//" rather than "</".
 		$json = str_replace( '</', '<\/', $json );
+		// "<!--" can switch the HTML parser into an escaped script state that
+		// swallows the rest of the page; < is the same character in JSON.
+		$json = str_replace( '<!--', '<!--', $json );
 
 		wp_print_inline_script_tag( $json, array( 'type' => 'application/ld+json', 'class' => AEOMATIC_Page_Crawler::SCRIPT_CLASS ) );
 	}

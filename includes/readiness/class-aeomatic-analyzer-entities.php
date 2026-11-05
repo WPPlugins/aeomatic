@@ -26,8 +26,10 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 		$issues          = array();
 		$recommendations = array();
 
+		// The analyzer stores the type under "type". When the user picked the
+		// type, that is the override itself, not a content-detected type.
 		$analysis = $this->schema_analysis( $post );
-		$detected = isset( $analysis['detected_type'] ) ? (string) $analysis['detected_type'] : '';
+		$detected = ( 'user_override' !== ( $analysis['source'] ?? '' ) && isset( $analysis['type'] ) ) ? (string) $analysis['type'] : '';
 		$assigned = $this->assigned_schema_type( $post );
 		$active   = $assigned !== '' ? $assigned : $detected;
 
@@ -49,12 +51,6 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 			$recommendations[] = __( 'Name specific people, companies, tools, or dates. Specific names are clearer to readers and engines than general adjectives.', 'aeomatic' );
 		}
 
-		if ( ! $this->schema_has_about( $post ) ) {
-			$score -= 15;
-			$issues[]          = __( 'Schema is missing the `about` property that pins the entity this post covers.', 'aeomatic' );
-			$recommendations[] = __( 'Set `about` in the Schema Generator to the primary entity (a Thing / Person / Organization / Product).', 'aeomatic' );
-		}
-
 		if ( ! $this->schema_has_date_modified( $post ) ) {
 			$score -= 10;
 			$issues[]          = __( 'Schema does not expose `dateModified`.', 'aeomatic' );
@@ -68,18 +64,9 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 		if ( ! class_exists( 'AEOMATIC_Schema_Analyzer' ) ) {
 			return array();
 		}
-		$key = defined( 'AEOMATIC_Schema_Analyzer::META_ANALYSIS' )
-			? AEOMATIC_Schema_Analyzer::META_ANALYSIS
-			: '_aeomatic_schema_analysis';
-		$raw = get_post_meta( $post->ID, $key, true );
-		if ( is_array( $raw ) ) {
-			return $raw;
-		}
-		if ( is_string( $raw ) && $raw !== '' ) {
-			$decoded = json_decode( $raw, true );
-			return is_array( $decoded ) ? $decoded : array();
-		}
-		return array();
+		// analyze() reads the persisted analysis and builds it when missing,
+		// so a post that was never opened in the editor still gets a type.
+		return (array) AEOMATIC_Schema_Analyzer::analyze( $post );
 	}
 
 	private function assigned_schema_type( WP_Post $post ): string {
@@ -105,20 +92,6 @@ class AEOMATIC_Analyzer_Entities implements AEOMATIC_Readiness_Analyzer_Interfac
 			return true;
 		}
 		if ( preg_match( '/\b(19|20)\d{2}\b/', $text ) ) {
-			return true;
-		}
-		return false;
-	}
-
-	private function schema_has_about( WP_Post $post ): bool {
-		if ( ! class_exists( 'AEOMATIC_Schema_Generator' ) ) {
-			return false;
-		}
-		$key = defined( 'AEOMATIC_Schema_Generator::META_OVERRIDES' )
-			? AEOMATIC_Schema_Generator::META_OVERRIDES
-			: '_aeomatic_schema_overrides';
-		$overrides = get_post_meta( $post->ID, $key, true );
-		if ( is_array( $overrides ) && ! empty( $overrides['about'] ) ) {
 			return true;
 		}
 		return false;

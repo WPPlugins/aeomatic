@@ -97,7 +97,7 @@ final class AEOMATIC_Entity_Signal_Collector {
 
 	// ── Content signals ───────────────────────────────────────────────────
 	public function content_plain(): string { return $this->plain; }
-	public function content_word_count(): int { return str_word_count( $this->plain ); }
+	public function content_word_count(): int { return AEOMATIC_Content_Extractor::count_words( $this->plain ); }
 
 	public function has_content_keyword( array $keywords, int $min_count = 1 ): bool {
 		if ( $this->plain === '' ) { return false; }
@@ -128,14 +128,14 @@ final class AEOMATIC_Entity_Signal_Collector {
 	public function assigned_schema_type(): string { return $this->assigned_type; }
 
 	public function has_schema_type( string $type ): bool {
-		$active = $this->assigned_type !== '' ? $this->assigned_type : (string) ( $this->schema_analysis['detected_type'] ?? '' );
+		$active = $this->assigned_type !== '' ? $this->assigned_type : (string) ( $this->schema_analysis['type'] ?? '' );
 		return strcasecmp( $active, $type ) === 0;
 	}
 
 	public function schema_type_is_subtype_of( string $ancestor ): bool {
 		// LocalBusiness has many subtypes (Restaurant, Store, MedicalOrganization…).
 		// Cheap coarse check: exact match OR name contains ancestor.
-		$active = $this->assigned_type !== '' ? $this->assigned_type : (string) ( $this->schema_analysis['detected_type'] ?? '' );
+		$active = $this->assigned_type !== '' ? $this->assigned_type : (string) ( $this->schema_analysis['type'] ?? '' );
 		if ( strcasecmp( $active, $ancestor ) === 0 ) { return true; }
 		return stripos( $active, $ancestor ) !== false;
 	}
@@ -176,7 +176,7 @@ final class AEOMATIC_Entity_Signal_Collector {
 		$aid = (int) $this->post->post_author;
 		if ( $aid <= 0 ) { return 0; }
 		$bio = get_user_meta( $aid, 'description', true );
-		return str_word_count( (string) wp_strip_all_tags( (string) $bio ) );
+		return AEOMATIC_Content_Extractor::count_words( (string) wp_strip_all_tags( (string) $bio ) );
 	}
 
 	public function post_author_display_name(): string {
@@ -242,16 +242,8 @@ final class AEOMATIC_Entity_Signal_Collector {
 
 	private function load_schema_analysis(): array {
 		if ( ! class_exists( 'AEOMATIC_Schema_Analyzer' ) ) { return array(); }
-		$key = defined( 'AEOMATIC_Schema_Analyzer::META_ANALYSIS' )
-			? AEOMATIC_Schema_Analyzer::META_ANALYSIS
-			: '_aeomatic_schema_analysis';
-		$raw = get_post_meta( $this->post->ID, $key, true );
-		if ( is_array( $raw ) ) { return $raw; }
-		if ( is_string( $raw ) && $raw !== '' ) {
-			$decoded = json_decode( $raw, true );
-			return is_array( $decoded ) ? $decoded : array();
-		}
-		return array();
+		// analyze() reads the persisted analysis and builds it when missing.
+		return (array) AEOMATIC_Schema_Analyzer::analyze( $this->post );
 	}
 
 	private function load_assigned_schema_type(): string {
@@ -267,8 +259,10 @@ final class AEOMATIC_Entity_Signal_Collector {
 		$key = defined( 'AEOMATIC_Schema_Generator::META_OVERRIDES' )
 			? AEOMATIC_Schema_Generator::META_OVERRIDES
 			: '_aeomatic_schema_overrides';
-		$raw = get_post_meta( $this->post->ID, $key, true );
-		return is_array( $raw ) ? $raw : array();
+		// Stored as a JSON string by AEOMATIC_Schema_Generator::save_overrides().
+		$raw     = get_post_meta( $this->post->ID, $key, true );
+		$decoded = is_string( $raw ) && '' !== $raw ? json_decode( $raw, true ) : $raw;
+		return is_array( $decoded ) ? $decoded : array();
 	}
 
 	/**
@@ -296,7 +290,7 @@ final class AEOMATIC_Entity_Signal_Collector {
 			'address'=> (string) ( $org['address']?? $schema['org_address']?? '' ),
 			'city'   => (string) ( $org['city']   ?? $schema['org_city']   ?? '' ),
 			'region' => (string) ( $org['region'] ?? $schema['org_region'] ?? '' ),
-			'phone'  => (string) ( $org['phone']  ?? $schema['org_phone']  ?? '' ),
+			'phone'  => (string) ( $org['phone']  ?? $schema['org_telephone'] ?? '' ),
 		);
 	}
 }

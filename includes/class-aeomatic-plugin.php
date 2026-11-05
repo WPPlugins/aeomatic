@@ -83,6 +83,8 @@ class AEOMATIC_Plugin {
 
 		AEOMATIC_LLMs_Txt::register_rewrites();
 		flush_rewrite_rules();
+		// Bodies cached by the previous version may hold content it got wrong.
+		AEOMATIC_LLMs_Txt::flush_cache();
 
 		$all                               = AEOMATIC_Settings::all();
 		$all['_meta']['installed_version'] = AEOMATIC_VERSION;

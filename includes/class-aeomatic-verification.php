@@ -192,6 +192,12 @@ class AEOMATIC_Verification {
 
 		$body = wp_remote_retrieve_body( $response );
 
+		if ( '1' !== (string) get_option( 'blog_public' ) ) {
+			return $this->result( 'robots', __( 'robots.txt with AI directives', 'aeomatic' ), 'warn',
+				__( 'Settings → Reading discourages search engines, so all crawlers are blocked and AEOmatic adds no AI crawler rules.', 'aeomatic' ),
+				$url, null );
+		}
+
 		if ( false === strpos( $body, 'AEOmatic' ) ) {
 			return $this->result( 'robots', __( 'robots.txt with AI directives', 'aeomatic' ), 'warn',
 				__( 'AEOmatic directives not detected. Another plugin or a static robots.txt may be overriding ours.', 'aeomatic' ),

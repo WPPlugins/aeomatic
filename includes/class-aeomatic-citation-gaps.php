@@ -38,7 +38,8 @@ class AEOMATIC_Citation_Gaps {
 		if ( empty( $post_types ) ) {
 			$post_types = array( 'post' );
 		}
-		$auth = static function () { return current_user_can( 'edit_posts' ); };
+		// Computed by the plugin: readable over REST, never writable there.
+		$auth = '__return_false';
 
 		foreach ( $post_types as $pt ) {
 			register_post_meta( $pt, self::META_GAPS, array(
@@ -188,10 +189,13 @@ class AEOMATIC_Citation_Gaps {
 					'seopress'   => '_seopress_titles_desc',
 				);
 				$written_to = array();
+				$kept       = array();
 				foreach ( $targets as $slug => $key ) {
-					// Only write if the plugin already stores meta for this post
-					// (avoid writing keys for plugins the user doesn't have).
-					if ( '' !== (string) get_post_meta( $id, $key, true ) || $this->is_seo_plugin_active( $slug ) ) {
+					// A description the user wrote is never replaced, even a short
+					// one. Empty keys are filled only for active SEO plugins.
+					if ( '' !== trim( (string) get_post_meta( $id, $key, true ) ) ) {
+						$kept[] = $slug;
+					} elseif ( $this->is_seo_plugin_active( $slug ) ) {
 						update_post_meta( $id, $key, $candidate );
 						$written_to[] = $slug;
 					}
@@ -199,6 +203,13 @@ class AEOMATIC_Citation_Gaps {
 				if ( '' === $excerpt ) {
 					wp_update_post( array( 'ID' => $id, 'post_excerpt' => $candidate ) );
 					$written_to[] = 'excerpt';
+				}
+				if ( empty( $written_to ) && ! empty( $kept ) ) {
+					return new WP_Error(
+						'description_kept',
+						__( 'This post already has a meta description, so AEOmatic left it unchanged. It is short: edit it in your SEO plugin to at least 40 characters.', 'aeomatic' ),
+						array( 'status' => 409 )
+					);
 				}
 				// Returned so the editor can fill its on-screen excerpt / SEO
 				// fields — otherwise the next Update posts them empty again.
@@ -490,7 +501,7 @@ class AEOMATIC_Citation_Gaps {
 
 		$extract = class_exists( 'AEOMATIC_Content_Extractor' )
 			? AEOMATIC_Content_Extractor::extract( $post )
-			: array( 'html' => (string) $post->post_content, 'text' => wp_strip_all_tags( (string) $post->post_content ), 'faqs' => array(), 'word_count' => str_word_count( wp_strip_all_tags( (string) $post->post_content ) ) );
+			: array( 'html' => (string) $post->post_content, 'text' => wp_strip_all_tags( (string) $post->post_content ), 'faqs' => array(), 'word_count' => AEOMATIC_Content_Extractor::count_words( wp_strip_all_tags( (string) $post->post_content ) ) );
 
 		$gaps = array();
 		$gaps = array_merge( $gaps, ( new AEOMATIC_Gap_Internal_Coverage() )->analyze( $post, $extract ) );

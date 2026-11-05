@@ -134,7 +134,7 @@ class AEOMATIC_Schema_Builder {
 			'@id'   => get_permalink( $post ),
 		);
 		// Word count is a plus.
-		$wc = str_word_count( $text );
+		$wc = AEOMATIC_Content_Extractor::count_words( $text );
 		if ( $wc ) {
 			$base['wordCount'] = $wc;
 		}

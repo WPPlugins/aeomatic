@@ -489,7 +489,10 @@ class AEOMATIC_AI_Access {
 				);
 			}
 		}
-		if ( $wrong && ( ! empty( $robots['fetched'] ) ) ) {
+		// With "Discourage search engines" on, AEOmatic adds no crawler rules
+		// on purpose; the Reading notice below explains it.
+		$public = '1' === (string) get_option( 'blog_public' );
+		if ( $wrong && $public && ( ! empty( $robots['fetched'] ) ) ) {
 			$out[] = sprintf(
 				/* translators: %s: list of crawlers */
 				__( 'Your live robots.txt does not match your AEOmatic crawler settings for: %s. Another plugin, a physical file or a server rule is changing it.', 'aeomatic' ),
@@ -497,7 +500,7 @@ class AEOMATIC_AI_Access {
 			);
 		}
 
-		if ( '1' !== (string) get_option( 'blog_public' ) ) {
+		if ( ! $public ) {
 			$out[] = __( 'Settings → Reading has "Discourage search engines from indexing this site" turned on.', 'aeomatic' );
 		}
 

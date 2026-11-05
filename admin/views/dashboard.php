@@ -41,6 +41,10 @@ $aeomatic_band = static function ( $score ): string {
 			&#9654; <?php esc_html_e( 'Watch the intro video', 'aeomatic' ); ?>
 			<span class="screen-reader-text"><?php esc_html_e( '(opens YouTube in a new tab)', 'aeomatic' ); ?></span>
 		</a>
+		<a href="https://www.youtube.com/watch?v=tESLUHAR_R8" target="_blank" rel="noopener noreferrer" style="margin-left:6px; white-space:nowrap;">
+			&#9654; <?php esc_html_e( 'See how AEOmatic works', 'aeomatic' ); ?>
+			<span class="screen-reader-text"><?php esc_html_e( '(opens YouTube in a new tab)', 'aeomatic' ); ?></span>
+		</a>
 	</p>
 
 	<div class="notice notice-info aeob-cta-notice" style="padding:12px 16px;">

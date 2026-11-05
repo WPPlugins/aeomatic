@@ -841,6 +841,21 @@ class AEOMATIC_Schema_Generator {
 
 	// ── Sanitisation ──────────────────────────────────────────────────────
 
+	/**
+	 * sanitize_callback for META_OVERRIDES. Every write — the plugin's own
+	 * routes and core's /wp/v2 meta field alike — goes through
+	 * sanitise_overrides(), so raw JSON can't bypass it.
+	 *
+	 * @param mixed $value JSON string.
+	 */
+	public static function sanitize_overrides_meta( $value ): string {
+		$decoded = is_string( $value ) && '' !== $value ? json_decode( $value, true ) : null;
+		if ( ! is_array( $decoded ) ) {
+			return '';
+		}
+		return (string) wp_json_encode( self::sanitise_overrides( $decoded ) );
+	}
+
 	private static function sanitise_overrides( array $fields ): array {
 		$clean = array();
 		foreach ( $fields as $key => $value ) {

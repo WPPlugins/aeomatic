@@ -72,7 +72,7 @@ class AEOMATIC_Analyzer_Authority implements AEOMATIC_Readiness_Analyzer_Interfa
 			return 0;
 		}
 		$bio = get_user_meta( (int) $post->post_author, 'description', true );
-		return str_word_count( (string) wp_strip_all_tags( (string) $bio ) );
+		return AEOMATIC_Content_Extractor::count_words( (string) wp_strip_all_tags( (string) $bio ) );
 	}
 
 	private function author_has_profile_link( WP_Post $post ): bool {
@@ -99,7 +99,7 @@ class AEOMATIC_Analyzer_Authority implements AEOMATIC_Readiness_Analyzer_Interfa
 		if ( ! class_exists( 'AEOMATIC_Settings' ) ) {
 			return false;
 		}
-		$name = (string) AEOMATIC_Settings::get( 'organization', 'name' );
+		$name = (string) AEOMATIC_Settings::get( 'schema', 'org_name' );
 		return trim( $name ) !== '';
 	}
 

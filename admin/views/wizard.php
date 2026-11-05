@@ -152,6 +152,10 @@ $crawler_groups = array(
 						&#9654; <?php esc_html_e( 'Watch the intro video', 'aeomatic' ); ?>
 						<span class="screen-reader-text"><?php esc_html_e( '(opens YouTube in a new tab)', 'aeomatic' ); ?></span>
 					</a>
+					<a class="button" href="https://www.youtube.com/watch?v=tESLUHAR_R8" target="_blank" rel="noopener noreferrer" style="margin-left:6px;">
+						&#9654; <?php esc_html_e( 'See how AEOmatic works', 'aeomatic' ); ?>
+						<span class="screen-reader-text"><?php esc_html_e( '(opens YouTube in a new tab)', 'aeomatic' ); ?></span>
+					</a>
 				</p>
 				<div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:8px;">
 					<?php

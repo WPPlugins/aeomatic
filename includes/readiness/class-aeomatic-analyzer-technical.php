@@ -49,7 +49,7 @@ class AEOMATIC_Analyzer_Technical implements AEOMATIC_Readiness_Analyzer_Interfa
 		// unparseable precisely because they used a page builder.
 		$extracted = AEOMATIC_Content_Extractor::extract( $post );
 		$text      = trim( (string) ( $extracted['text'] ?? '' ) );
-		if ( str_word_count( $text ) < 20 ) {
+		if ( AEOMATIC_Content_Extractor::count_words( $text ) < 20 ) {
 			$score -= 20;
 			$issues[]          = __( 'Under 20 words of extractable text found in the post body, page-builder data, or ACF fields — AI crawlers may find little to read here.', 'aeomatic' );
 			$recommendations[] = __( 'Add body copy, or check that the content renders in the initial HTML response rather than being injected by JavaScript.', 'aeomatic' );

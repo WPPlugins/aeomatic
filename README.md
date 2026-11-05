@@ -198,6 +198,8 @@ Everything marked **Planned** is not in the codebase. Items requiring repeated q
 
 ## How AEOmatic works
 
+▶ **[Watch: How AEOmatic works](https://www.youtube.com/watch?v=tESLUHAR_R8)** (YouTube)
+
 ```text
 Scan          Available   Extract content across editors and page builders;
               │           detect schema type, entities, FAQs, crawler config

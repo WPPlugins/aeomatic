@@ -50,6 +50,8 @@ class AEOMATIC_LLMs_Txt {
 		add_action( 'save_post', array( __CLASS__, 'flush_cache' ) );
 		add_action( 'deleted_post', array( __CLASS__, 'flush_cache' ) );
 		add_action( 'wp_update_nav_menu', array( __CLASS__, 'flush_cache' ) );
+		// Description, extra URLs and post types come from the settings.
+		add_action( 'update_option_' . AEOMATIC_OPTION_KEY, array( __CLASS__, 'flush_cache' ) );
 	}
 
 	/**
@@ -267,6 +269,7 @@ class AEOMATIC_LLMs_Txt {
 			$query = new WP_Query( array(
 				'post_type'      => $slug,
 				'post_status'    => 'publish',
+				'has_password'   => false, // Protected posts stay out of llms.txt / llms-full.txt.
 				'posts_per_page' => $max_items,
 				'orderby'        => 'date',
 				'order'          => 'DESC',
@@ -359,6 +362,9 @@ class AEOMATIC_LLMs_Txt {
 				'number'      => 10,
 			) );
 			foreach ( (array) $wp_pages as $p ) {
+				if ( '' !== (string) $p->post_password ) {
+					continue;
+				}
 				$pages[] = array(
 					'title' => get_the_title( $p ),
 					'url'   => get_permalink( $p ),
@@ -398,6 +404,7 @@ class AEOMATIC_LLMs_Txt {
 			$query = new WP_Query( array(
 				'post_type'      => $slug,
 				'post_status'    => 'publish',
+				'has_password'   => false, // Protected posts stay out of llms.txt / llms-full.txt.
 				'posts_per_page' => $max_items,
 				'orderby'        => 'date',
 				'order'          => 'DESC',
@@ -433,6 +440,7 @@ class AEOMATIC_LLMs_Txt {
 		$query = new WP_Query( array(
 			'post_type'      => 'post',
 			'post_status'    => 'publish',
+			'has_password'   => false, // Protected posts stay out of llms.txt / llms-full.txt.
 			'posts_per_page' => 25,
 			'orderby'        => 'date',
 			'order'          => 'DESC',

@@ -16,7 +16,9 @@ class AEOMATIC_Crawler_Control {
 
 	public function register(): void {
 		// Modern WP (5.3+) uses robots_txt filter.
-		add_filter( 'robots_txt', array( $this, 'append_directives' ), 10, 2 );
+		// Late, so the "User-agent: *" rules other plugins add are already
+		// there to be copied into the allowed crawlers' groups.
+		add_filter( 'robots_txt', array( $this, 'append_directives' ), 99, 2 );
 	}
 
 	/**
@@ -25,7 +27,15 @@ class AEOMATIC_Crawler_Control {
 	 * @param string $output  Existing robots.txt body.
 	 * @param string $public  '1' if site is public.
 	 */
-	public function append_directives( string $output, string $public ): string {
+	public function append_directives( $output, $public ): string {
+		$output = (string) $output;
+
+		// "Discourage search engines" is on: core already blocks every crawler.
+		// Adding Allow groups here would let AI crawlers into a private site.
+		if ( '0' === (string) $public ) {
+			return $output . "\n# AEOmatic: no AI crawler rules added. Settings > Reading discourages search engines, so all crawlers stay blocked.\n";
+		}
+
 		$crawlers   = AEOMATIC_Settings::get( 'crawlers' );
 		$block_pdfs = (bool) AEOMATIC_Settings::get( 'robots', 'block_pdfs' );
 
@@ -44,12 +54,28 @@ class AEOMATIC_Crawler_Control {
 		}
 
 		if ( ! empty( $crawlers ) ) {
+			// A crawler named in its own group ignores every "User-agent: *"
+			// rule, so each allowed crawler's group repeats them (wp-admin,
+			// other plugins' rules, the PDF block).
+			$shared = self::star_rules( $output );
+			if ( $block_pdfs ) {
+				$shared[] = 'Disallow: /*.pdf$';
+			}
+			$shared = array_values( array_unique( $shared ) );
+
 			$lines[] = '';
 			$lines[] = '# AI crawler directives — managed by AEOmatic';
 
 			foreach ( $crawlers as $bot => $allowed ) {
 				$lines[] = 'User-agent: ' . $bot;
-				$lines[] = $allowed ? 'Allow: /' : 'Disallow: /';
+				if ( $allowed ) {
+					$lines[] = 'Allow: /';
+					foreach ( $shared as $rule ) {
+						$lines[] = $rule;
+					}
+				} else {
+					$lines[] = 'Disallow: /';
+				}
 				$lines[] = '';
 			}
 		}
@@ -70,5 +96,30 @@ class AEOMATIC_Crawler_Control {
 		}
 
 		return $output . "\n" . implode( "\n", $lines );
+	}
+
+	/**
+	 * The Allow / Disallow lines of every "User-agent: *" group in $robots.
+	 *
+	 * @return string[]
+	 */
+	private static function star_rules( string $robots ): array {
+		if ( ! class_exists( 'AEOMATIC_AI_Access' ) ) {
+			return array();
+		}
+		$out = array();
+		foreach ( AEOMATIC_AI_Access::parse_robots( $robots ) as $group ) {
+			if ( ! in_array( '*', (array) $group['agents'], true ) ) {
+				continue;
+			}
+			foreach ( (array) $group['rules'] as $rule ) {
+				$path = (string) $rule['path'];
+				if ( '' === $path ) {
+					continue; // An empty Disallow matches nothing.
+				}
+				$out[] = ( $rule['allow'] ? 'Allow: ' : 'Disallow: ' ) . $path;
+			}
+		}
+		return $out;
 	}
 }

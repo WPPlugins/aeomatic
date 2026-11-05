@@ -32,35 +32,57 @@ class AEOMATIC_Audit {
 		}
 
 		foreach ( $post_types as $pt ) {
+			// Computed by the plugin: readable over REST, never writable there.
 			register_post_meta( $pt, self::META_SCORE, array(
-				'type'         => 'integer',
-				'single'       => true,
-				'show_in_rest' => true,
-				'auth_callback' => function () {
-					return current_user_can( 'edit_posts' );
-				},
+				'type'          => 'integer',
+				'single'        => true,
+				'show_in_rest'  => true,
+				'auth_callback' => '__return_false',
 			) );
 			register_post_meta( $pt, self::META_BREAKDOWN, array(
-				'type'         => 'string',
-				'single'       => true,
-				'show_in_rest' => true,
-				'auth_callback' => function () {
-					return current_user_can( 'edit_posts' );
-				},
-			) );
-			register_post_meta( $pt, AEOMATIC_Schema_Analyzer::META_OVERRIDE, array(
 				'type'          => 'string',
 				'single'        => true,
 				'show_in_rest'  => true,
-				'auth_callback' => function () { return current_user_can( 'edit_posts' ); },
+				'auth_callback' => '__return_false',
+			) );
+			// User-editable: sanitised the same way as the plugin's own routes,
+			// and only by someone who can edit this particular post.
+			register_post_meta( $pt, AEOMATIC_Schema_Analyzer::META_OVERRIDE, array(
+				'type'              => 'string',
+				'single'            => true,
+				'show_in_rest'      => true,
+				'sanitize_callback' => array( __CLASS__, 'sanitize_schema_type_meta' ),
+				'auth_callback'     => array( __CLASS__, 'can_edit_post_meta' ),
 			) );
 			register_post_meta( $pt, AEOMATIC_Schema_Generator::META_OVERRIDES, array(
-				'type'          => 'string',
-				'single'        => true,
-				'show_in_rest'  => true,
-				'auth_callback' => function () { return current_user_can( 'edit_posts' ); },
+				'type'              => 'string',
+				'single'            => true,
+				'show_in_rest'      => true,
+				'sanitize_callback' => array( 'AEOMATIC_Schema_Generator', 'sanitize_overrides_meta' ),
+				'auth_callback'     => array( __CLASS__, 'can_edit_post_meta' ),
 			) );
 		}
+	}
+
+	/**
+	 * auth_callback for user-editable post meta.
+	 *
+	 * @param bool   $allowed  Default.
+	 * @param string $meta_key Meta key.
+	 * @param int    $post_id  Post ID.
+	 */
+	public static function can_edit_post_meta( $allowed, $meta_key = '', $post_id = 0 ): bool {
+		return current_user_can( 'edit_post', (int) $post_id );
+	}
+
+	/**
+	 * Only known schema types (or empty) are stored as the type override.
+	 *
+	 * @param mixed $value Raw value.
+	 */
+	public static function sanitize_schema_type_meta( $value ): string {
+		$value = is_string( $value ) ? trim( $value ) : '';
+		return isset( AEOMATIC_Schema_Analyzer::known_types()[ $value ] ) ? $value : '';
 	}
 
 	public function register_routes(): void {

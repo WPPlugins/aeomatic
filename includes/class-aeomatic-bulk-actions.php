@@ -89,7 +89,7 @@ class AEOMATIC_Bulk_Actions {
 		$rows = array();
 		foreach ( $post_ids as $post_id ) {
 			$post = get_post( $post_id );
-			if ( ! $post instanceof WP_Post ) {
+			if ( ! $post instanceof WP_Post || ! current_user_can( 'edit_post', $post_id ) ) {
 				continue;
 			}
 

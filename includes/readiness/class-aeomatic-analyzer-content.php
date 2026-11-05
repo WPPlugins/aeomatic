@@ -30,7 +30,7 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 		$extracted = AEOMATIC_Content_Extractor::extract( $post );
 		$text      = (string) ( $extracted['text'] ?? '' );
 		$html      = (string) ( $extracted['html'] ?? '' );
-		$words     = str_word_count( $text );
+		$words     = AEOMATIC_Content_Extractor::count_words( $text );
 
 		$score           = 100;
 		$issues          = array();
@@ -78,7 +78,7 @@ class AEOMATIC_Analyzer_Content implements AEOMATIC_Readiness_Analyzer_Interface
 			return true;
 		}
 		$first_sentence = preg_split( '/(?<=[.!?])\s+/', $opening )[0] ?? '';
-		return str_word_count( $first_sentence ) >= 8;
+		return AEOMATIC_Content_Extractor::count_words( $first_sentence ) >= 8;
 	}
 
 	private function has_faq_structure( string $html ): bool {

@@ -69,8 +69,11 @@
 	const sevColor   = s => s === 'high' ? '#a32d2d' : s === 'medium' ? '#ba7517' : '#6e6e73';
 
 	// ── Simple syntax highlighter for the JSON preview ───────────────────
+	// HTML-escaped first: values come from post content and post meta, and the
+	// result is rendered with dangerouslySetInnerHTML.
 	function highlight( json ) {
 		return json
+			.replace( /&/g, '&amp;' ).replace( /</g, '&lt;' ).replace( />/g, '&gt;' )
 			.replace( /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?)/g, m =>
 				/:$/.test( m )
 					? `<span style="color:#7dd3fc">${m}</span>`

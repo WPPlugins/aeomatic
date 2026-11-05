@@ -296,7 +296,7 @@ wp_enqueue_script( 'wp-api-fetch' );
 			author:    val( '#aeob-gaps-filter-author' ) || '0'
 		} );
 		$( '#aeob-gaps-status' ).textContent = 'Loading…';
-		fetch( restRoot + '?' + params.toString(), {
+		fetch( restRoot + ( restRoot.indexOf( '?' ) > -1 ? '&' : '?' ) + params.toString(), { // rest_url() already has a '?' with plain permalinks (?rest_route=…).
 			headers: { 'X-WP-Nonce': nonce }
 		} )
 			.then( function ( r ) { return r.json(); } )

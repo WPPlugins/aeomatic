@@ -41,6 +41,9 @@ class AEOMATIC_Crawler_Log {
 	/** User-agent strings are truncated to this many characters before storage. */
 	const UA_MAX_LENGTH = 255;
 
+	/** Stored URL length cap: the user agent is trivially spoofed, so a fake bot must not be able to grow the log with huge URLs. */
+	const URL_MAX_LENGTH = 255;
+
 	/**
 	 * All recognised AI bot strings (case-insensitive substring match).
 	 */
@@ -116,7 +119,7 @@ class AEOMATIC_Crawler_Log {
 		// Staged, not written: the status code is only final at shutdown.
 		self::$pending = array(
 			'bot'  => $bot,
-			'url'  => $uri,
+			'url'  => substr( $uri, 0, self::URL_MAX_LENGTH ),
 			'ua'   => self::truncate_ua( $ua ),
 			'time' => time(),
 		);

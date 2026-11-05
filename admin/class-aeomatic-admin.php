@@ -243,12 +243,12 @@ class AEOMATIC_Admin {
 		if ( ! isset( $_GET['aeomatic_dismiss_review'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'manage_options' ) || ! self::review_nonce_ok() ) {
 			return;
 		}
 		update_option( 'aeomatic_review_dismissed', true, false );
-		// Redirect back cleanly without the query param.
-		$redirect = remove_query_arg( 'aeomatic_dismiss_review' );
+		// Redirect back cleanly without the query params.
+		$redirect = remove_query_arg( array( 'aeomatic_dismiss_review', '_wpnonce' ) );
 		wp_safe_redirect( $redirect );
 		exit;
 	}
@@ -261,13 +261,21 @@ class AEOMATIC_Admin {
 		if ( ! isset( $_GET['aeomatic_snooze_review'] ) ) {
 			return;
 		}
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if ( ! current_user_can( 'manage_options' ) || ! self::review_nonce_ok() ) {
 			return;
 		}
 		update_option( 'aeomatic_review_snoozed_until', time() + ( 14 * DAY_IN_SECONDS ), false );
-		$redirect = remove_query_arg( 'aeomatic_snooze_review' );
+		$redirect = remove_query_arg( array( 'aeomatic_snooze_review', '_wpnonce' ) );
 		wp_safe_redirect( $redirect );
 		exit;
+	}
+
+	/**
+	 * Nonce check for the review notice's dismiss / snooze links.
+	 */
+	private static function review_nonce_ok(): bool {
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		return (bool) wp_verify_nonce( $nonce, 'aeomatic_review_notice' );
 	}
 
 	/**
@@ -314,8 +322,10 @@ class AEOMATIC_Admin {
 		}
 
 		$review_url  = 'https://wordpress.org/support/plugin/aeomatic/reviews/#new-post';
-		$dismiss_url = add_query_arg( 'aeomatic_dismiss_review', '1' );
-		$snooze_url  = add_query_arg( 'aeomatic_snooze_review', '1' );
+		// Not wp_nonce_url(): it HTML-encodes "&", which breaks the raw URL the fetch() below uses.
+		$nonce       = wp_create_nonce( 'aeomatic_review_notice' );
+		$dismiss_url = add_query_arg( array( 'aeomatic_dismiss_review' => '1', '_wpnonce' => $nonce ) );
+		$snooze_url  = add_query_arg( array( 'aeomatic_snooze_review' => '1', '_wpnonce' => $nonce ) );
 
 		// Background-dismiss when the user clicks "Leave a review" — the link
 		// opens wp.org in a new tab via target="_blank"; this fetch silently
