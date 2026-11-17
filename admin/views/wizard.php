@@ -389,6 +389,27 @@ $crawler_groups = array(
 				$headers_on = AEOMATIC_AI_Headers::is_enabled();
 				$org_on     = (bool) AEOMATIC_Settings::get( 'schema', 'organization' );
 				$mark       = static function ( bool $ok ): string { return $ok ? '&#10003;' : '&#8212;'; };
+
+				// Wizard-end review nudge: the user is in a positive moment
+				// (setup just succeeded). The 7-day admin notice in
+				// AEOMATIC_Admin::maybe_show_review_notice() only fires after
+				// engagement thresholds, so many never see it. Same dismiss URL
+				// + nonce so clicking "Leave a review" silently records a
+				// permanent dismiss and the day-7 notice does not duplicate.
+				$show_review_nudge = ! get_option( 'aeomatic_review_dismissed' );
+				$review_url        = 'https://wordpress.org/support/plugin/aeomatic/reviews/#new-post';
+				$review_nonce      = wp_create_nonce( 'aeomatic_review_notice' );
+				$review_dismiss    = add_query_arg(
+					array(
+						'aeomatic_dismiss_review' => '1',
+						'_wpnonce'                => $review_nonce,
+					),
+					admin_url( 'index.php' )
+				);
+				$review_onclick    = sprintf(
+					"fetch(%s,{credentials:'same-origin'}).catch(function(){});return true;",
+					wp_json_encode( esc_url_raw( $review_dismiss ) )
+				);
 				?>
 				<div class="aeom-wiz__head">
 					<h1><?php esc_html_e( 'You\'re live — here\'s the proof', 'aeomatic' ); ?></h1>
@@ -437,6 +458,28 @@ $crawler_groups = array(
 				<p class="aeom-wiz__hint" style="margin-top:18px;">
 					<?php esc_html_e( 'Next: open any post in the block editor and check the AEOmatic sidebar. You\'ll see the schema type detector, citation-gap analyser, and the new "Ask AI: Am I cited?" panel that opens ChatGPT/Perplexity/Google AI/Claude in a new tab with your question pre-filled.', 'aeomatic' ); ?>
 				</p>
+
+				<?php if ( $show_review_nudge ) : ?>
+					<div class="aeom-wiz__review" style="margin-top:22px; padding:16px 18px; background:#f6f5ff; border:1px solid #d8d2ff; border-left:4px solid #5B3FFF; border-radius:8px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+						<img src="<?php echo esc_url( AEOMATIC_URL . 'assets/images/icon.svg' ); ?>" alt="" width="36" height="36" style="flex-shrink:0;">
+						<div style="flex:1; min-width:220px;">
+							<strong style="font-size:14px; color:#1d2327;">
+								<?php esc_html_e( 'Found AEOmatic useful? A 30-second review helps a lot.', 'aeomatic' ); ?>
+							</strong>
+							<p style="margin:4px 0 0; color:#50575e; font-size:13px;">
+								<?php esc_html_e( 'We\'re a small team shipping fixes and improvements daily. A review on WordPress.org helps other site owners find the plugin.', 'aeomatic' ); ?>
+							</p>
+						</div>
+						<a href="<?php echo esc_url( $review_url ); ?>"
+						   target="_blank"
+						   rel="noopener noreferrer"
+						   class="button button-primary"
+						   style="background:#5B3FFF; border-color:#5B3FFF; flex-shrink:0;"
+						   onclick="<?php echo esc_attr( $review_onclick ); ?>">
+							⭐ <?php esc_html_e( 'Leave a review', 'aeomatic' ); ?>
+						</a>
+					</div>
+				<?php endif; ?>
 			<?php endif; ?>
 
 			<div class="aeom-wiz__foot">

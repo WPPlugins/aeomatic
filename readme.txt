@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -264,6 +264,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.3.1 =
+Adds a review nudge at the end of the setup wizard — a small purple card on the final "You're live" step with one button that opens WordPress.org in a new tab. No scoring, schema or output changes. Shares the existing dismiss state with the day-7 admin notice, so you are never asked twice. Safe update.
+
 = 1.3.0 =
 Security release on top of 1.2.9. Fixes a script injection in the JSON-LD preview, password-protected posts leaking into /llms-full.txt, bulk audit running on posts the user cannot edit, missing nonce on review-notice dismiss, and crawler-log URLs growing without bound. robots.txt now keeps your other rules for AI crawlers, respects "Discourage search engines", and the Block PDF files toggle can be turned off again. Entities and Authority scores corrected, non-Latin scripts are now counted as words, Citation Gaps and Rescan work on plain permalinks, and the "Set schema type" quick fix is reinstated. The 1.2.9 intro video on the setup wizard and AI Readiness dashboard is kept. Scores may change — click Re-run in the Audit tab or update a post to refresh. Recommended update.
 
@@ -304,6 +307,10 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.3.1 =
+
+* **New: review nudge at the end of the setup wizard.** The final "You're live — here's the proof" step shows a small purple card inviting a WordPress.org review, with one button that opens the review form in a new tab. It shares the same dismiss state as the existing day-7 admin notice (`aeomatic_review_dismissed`), so once you review (or dismiss) you are never asked twice. No scoring, schema or front-end output changes.
 
 = 1.3.0 =
 
