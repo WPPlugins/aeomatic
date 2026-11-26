@@ -19,12 +19,14 @@ class AEOMATIC_Admin {
 	const SLUG_ENTITY_SCAN = 'aeomatic-entity-scanner';
 	const SLUG_SETTINGS   = 'aeomatic-settings';
 	const SLUG_ACCESS     = 'aeomatic-ai-access';
+	const SLUG_REDIRECTS  = 'aeomatic-redirects';
 
 	public function register(): void {
 		add_action( 'admin_menu',             array( $this, 'add_menu' ) );
 		add_action( 'admin_init',             array( $this, 'maybe_save' ) );
 		add_action( 'admin_init',             array( $this, 'maybe_dismiss_review' ) );
 		add_action( 'admin_init',             array( $this, 'maybe_snooze_review' ) );
+		add_action( 'admin_init',             array( $this, 'maybe_dismiss_whats_new' ) );
 		add_action( 'admin_notices',          array( $this, 'maybe_show_review_notice' ) );
 		add_action( 'admin_enqueue_scripts',  array( $this, 'enqueue_assets' ) );
 		add_filter( 'plugin_action_links_' . AEOMATIC_BASENAME, array( $this, 'plugin_links' ) );
@@ -102,6 +104,15 @@ class AEOMATIC_Admin {
 			'manage_options',
 			self::SLUG_ENTITY_SCAN,
 			array( $this, 'render_entity_scanner' )
+		);
+
+		add_submenu_page(
+			self::MENU_SLUG,
+			__( 'URL redirects — AEOmatic', 'aeomatic' ),
+			__( 'Redirects', 'aeomatic' ),
+			'manage_options',
+			self::SLUG_REDIRECTS,
+			array( $this, 'render_redirects' )
 		);
 
 		add_submenu_page(
@@ -235,6 +246,10 @@ class AEOMATIC_Admin {
 		require AEOMATIC_DIR . 'admin/views/settings.php';
 	}
 
+	public function render_redirects(): void {
+		require AEOMATIC_DIR . 'admin/views/redirects.php';
+	}
+
 	/**
 	 * Dismiss the review notice permanently when the user clicks "Already did" or "×".
 	 */
@@ -276,6 +291,26 @@ class AEOMATIC_Admin {
 	private static function review_nonce_ok(): bool {
 		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 		return (bool) wp_verify_nonce( $nonce, 'aeomatic_review_notice' );
+	}
+
+	/**
+	 * Dismiss the "What's new" dashboard card for the current version only.
+	 * Stores the dismissed version, so the next release's card appears
+	 * automatically without any extra bookkeeping.
+	 */
+	public function maybe_dismiss_whats_new(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! isset( $_GET['aeomatic_dismiss_whats_new'] ) ) {
+			return;
+		}
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+		if ( ! current_user_can( 'manage_options' ) || ! wp_verify_nonce( $nonce, 'aeomatic_whats_new' ) ) {
+			return;
+		}
+		update_option( 'aeomatic_whats_new_dismissed_version', AEOMATIC_VERSION, false );
+		$redirect = remove_query_arg( array( 'aeomatic_dismiss_whats_new', '_wpnonce' ) );
+		wp_safe_redirect( $redirect );
+		exit;
 	}
 
 	/**

@@ -35,6 +35,8 @@ $aeomatic_options = array(
 	'aeomatic_wizard_completed',
 	'aeomatic_ai_access_results',
 	'aeomatic_ai_access_token',
+	'aeomatic_redirects',
+	'aeomatic_whats_new_dismissed_version',
 );
 foreach ( $aeomatic_options as $aeomatic_option ) {
 	delete_option( $aeomatic_option );

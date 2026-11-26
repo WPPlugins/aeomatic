@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -264,6 +264,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.3.2 =
+Adds URL redirects and a "What's new" dashboard card. The new "Redirects" submenu lets you add 301 or 302 redirects by exact path, so AI crawlers and search engines stop getting a 404 on an old URL after you rename a slug (exact path match only — no regex or wildcards in this release). The redirects option is autoloaded so sites with no redirects pay no extra DB query, and malformed absolute-URL targets (for example "https://" with no host) are rejected at save time. The "What's new" card on the AI Readiness dashboard surfaces each release's highlights, dismiss once per version. No scoring or schema changes. Safe update.
+
 = 1.3.1 =
 Adds a review nudge at the end of the setup wizard — a small purple card on the final "You're live" step with one button that opens WordPress.org in a new tab. No scoring, schema or output changes. Shares the existing dismiss state with the day-7 admin notice, so you are never asked twice. Safe update.
 
@@ -307,6 +310,15 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.3.2 =
+
+* **New: URL redirects.** A new **AEOmatic → Redirects** submenu lets admins add 301 or 302 redirects by exact source path, with an optional full-URL or on-site target. Matching is on `template_redirect` priority 1, with incoming paths normalised (query string + trailing slash stripped) against stored source paths normalised the same way, so `/old`, `/old/` and `/old?ref=x` all route through the same rule. Each row stores a hit counter and last-hit timestamp, visible in the list. Admin, REST, AJAX and cron requests are always skipped. Capped at 500 rows to keep the option payload bounded. No regex and no wildcards in this release — one row per path.
+* **New: "What's new" card on the AI Readiness dashboard.** Surfaces 3–5 highlights from the current release at the top of the dashboard with a "View full changelog" link. Dismissal is stored against the current plugin version in `aeomatic_whats_new_dismissed_version`, so when the next release ships the card reappears automatically — users see what they have not already seen, and nothing more. New admin_init handler `AEOMATIC_Admin::maybe_dismiss_whats_new()` records the dismiss over a nonce-protected GET.
+* **Performance: the redirects option is autoloaded.** `aeomatic_redirects` is written with `autoload=true`, so sites with no redirects pay no extra DB query on every uncached frontend request. The option is capped at 500 rows, so the autoloaded payload stays small.
+* **Validation: malformed absolute-URL targets are rejected at save time.** The Add-a-redirect form previously would have accepted any string matching `https?://…`, so `https://` or `http:// ` could be saved and then issued verbatim by `wp_redirect()`. Targets are now run through `wp_http_validate_url()` before storage and rejected with a clear message if they do not parse to a real URL.
+* **Admin copy mentions page caches.** The Redirects screen notes that a full-page cache may need to be flushed after you add a redirect for a URL that is already cached — `template_redirect` fires inside WordPress, so a cached HTML response can bypass it until the cache entry expires.
+* Storage: single site option `aeomatic_redirects`. Uninstall now removes it along with the new "What's new" dismissal key. No scoring, schema or front-end output changes.
 
 = 1.3.1 =
 

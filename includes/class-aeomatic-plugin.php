@@ -47,6 +47,7 @@ class AEOMATIC_Plugin {
 		( new AEOMATIC_AI_Headers() )->register();
 		( new AEOMATIC_Crawler_Log() )->register();
 		( new AEOMATIC_AI_Access() )->register();
+		( new AEOMATIC_Redirects() )->register();
 		( new AEOMATIC_Shortcodes() )->register();
 		// Page-builder editors (Elementor, Beaver, Bricks, Divi, Oxygen,
 		// WPBakery). Not admin-only: several builders edit on the front end.
