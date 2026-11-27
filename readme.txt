@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.2
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -264,6 +264,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.3.3 =
+Fix: the block-editor "Preview JSON-LD" panel now also shows the standalone Author / Person block when the Author / Person schema setting is enabled. Previously the preview only rendered the primary (Article / Product) block, so ticking the Author / Person checkbox in Settings looked like it did nothing — even though the schema was correctly emitted in the published page's `<head>`. Frontend output was always correct; only the admin preview was misleading. Safe update.
+
 = 1.3.2 =
 Adds URL redirects and a "What's new" dashboard card. The new "Redirects" submenu lets you add 301 or 302 redirects by exact path, so AI crawlers and search engines stop getting a 404 on an old URL after you rename a slug (exact path match only — no regex or wildcards in this release). The redirects option is autoloaded so sites with no redirects pay no extra DB query, and malformed absolute-URL targets (for example "https://" with no host) are rejected at save time. The "What's new" card on the AI Readiness dashboard surfaces each release's highlights, dismiss once per version. No scoring or schema changes. Safe update.
 
@@ -310,6 +313,11 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.3.3 =
+
+* **Fix: block-editor Preview JSON-LD now shows the Author / Person block.** The frontend `wp_head` output already emits a standalone Person block whenever the Author / Person schema setting is enabled, but the `/aeomatic/v1/schema/{id}/preview` REST endpoint used by the editor sidebar's "Preview JSON-LD" panel only rendered the primary (Article / Product) block. The result: a site owner would tick the Author / Person checkbox in Settings, open the Preview panel, see no Person block, and reasonably conclude the setting was broken — even though the published page actually did carry the schema. The preview now mirrors the frontend's render path for the Author block.
+* Refactor: `AEOMATIC_Schema::author_schema()` and `add_author_authority()` are now `public static` / `private static` respectively, so the preview endpoint can call the same code the frontend uses rather than a duplicate. No behaviour change on the frontend.
 
 = 1.3.2 =
 

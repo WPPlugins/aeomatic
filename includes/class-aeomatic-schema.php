@@ -153,7 +153,7 @@ class AEOMATIC_Schema {
 
 			// 5. Author schema.
 			if ( ! empty( $settings['author'] ) ) {
-				$author = $this->author_schema( (int) $post->post_author );
+				$author = self::author_schema( (int) $post->post_author );
 				if ( $author ) {
 					$blocks[] = $author;
 				}
@@ -494,8 +494,13 @@ class AEOMATIC_Schema {
 
 	/**
 	 * Author / Person schema.
+	 *
+	 * Public static so the editor-sidebar preview endpoint
+	 * (AEOMATIC_Audit::rest_schema_preview) can build the same block the
+	 * front-end emits; the preview panel previously only rendered the primary
+	 * schema, so a ticked Author / Person checkbox looked like a no-op.
 	 */
-	private function author_schema( int $user_id ): ?array {
+	public static function author_schema( int $user_id ): ?array {
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
 			return null;
@@ -550,7 +555,7 @@ class AEOMATIC_Schema {
 	 *   aeomatic_award           → award (string[])
 	 *   aeomatic_job_title       → jobTitle
 	 */
-	private function add_author_authority( array $schema, int $user_id ): array {
+	private static function add_author_authority( array $schema, int $user_id ): array {
 		$list_keys = array(
 			'knows_about'    => 'knowsAbout',
 			'has_credential' => 'hasCredential',

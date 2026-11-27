@@ -354,6 +354,18 @@ class AEOMATIC_Audit {
 			}
 		}
 
+		// Author / Person — the frontend emits this as a separate block whenever
+		// the Author / Person setting is on, so the sidebar preview must do the
+		// same. Otherwise ticking the Author / Person checkbox looks like a
+		// no-op in the editor even though the schema is correctly rendered on
+		// the published page.
+		if ( ! empty( $settings['author'] ) ) {
+			$author = AEOMATIC_Schema::author_schema( (int) $post->post_author );
+			if ( $author ) {
+				$blocks[] = $author;
+			}
+		}
+
 		return rest_ensure_response( array(
 			'type'       => $type,
 			'type_label' => AEOMATIC_Schema_Analyzer::known_types()[ $type ]['label'] ?? $type,
