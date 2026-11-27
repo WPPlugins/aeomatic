@@ -164,6 +164,27 @@ class AEOMATIC_Schema {
 			if ( $video ) {
 				$blocks[] = $video;
 			}
+		} elseif ( is_author() ) {
+			// Author archive — /author/{username}/. The page is literally
+			// about one Person, so when the Author / Person schema setting is
+			// on, emit a ProfilePage (the archive URL itself) and the Person
+			// it showcases, linked by mainEntity. Without this branch an
+			// author archive carries only a breadcrumb — a visible gap
+			// reported by users who ticked Author / Person and then looked at
+			// their author profile page expecting schema.
+			if ( ! empty( $settings['author'] ) ) {
+				$author_user = get_queried_object();
+				if ( $author_user instanceof WP_User ) {
+					$profile = $this->profile_page_schema( $author_user, $settings );
+					if ( $profile ) {
+						$blocks[] = $profile;
+					}
+					$person = self::author_schema( (int) $author_user->ID );
+					if ( $person ) {
+						$blocks[] = $person;
+					}
+				}
+			}
 		} elseif ( is_front_page() || is_home() || is_category() || is_tag() || is_tax() ) {
 			$page = $this->archive_page_schema( $settings );
 			if ( $page ) {
@@ -389,6 +410,33 @@ class AEOMATIC_Schema {
 			$schema['about'] = array( '@id' => AEOMATIC_Schema_Generator::org_id() );
 		}
 		return $schema;
+	}
+
+	/**
+	 * ProfilePage for an author archive — the WebPage subtype for
+	 * /author/{username}/. mainEntity links to the Person node emitted
+	 * alongside it.
+	 */
+	private function profile_page_schema( WP_User $user, array $settings ): ?array {
+		$url = get_author_posts_url( $user->ID );
+		if ( '' === $url ) {
+			return null;
+		}
+		$schema = array(
+			'@context'   => 'https://schema.org',
+			'@type'      => 'ProfilePage',
+			'@id'        => $url . '#webpage',
+			'url'        => $url,
+			'name'       => $user->display_name,
+			'isPartOf'   => array( '@id' => AEOMATIC_Schema_Generator::website_id() ),
+			'inLanguage' => get_bloginfo( 'language' ),
+			'mainEntity' => array( '@id' => AEOMATIC_Schema_Generator::person_id( $user->ID ) ),
+		);
+		$bio = get_user_meta( $user->ID, 'description', true );
+		if ( $bio ) {
+			$schema['description'] = wp_strip_all_tags( $bio );
+		}
+		return $this->page_extras( $schema, $url, $settings );
 	}
 
 	/**

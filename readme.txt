@@ -4,7 +4,7 @@ Tags: aeo, answer engine optimization, llms-txt, gptbot, ai crawler
 Requires at least: 6.4
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.3.3
+Stable tag: 1.3.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -264,6 +264,9 @@ AEOmatic makes no external API calls on the front end and ships with no third-pa
 
 == Upgrade Notice ==
 
+= 1.3.4 =
+Fix: author archive pages (/author/username/) now carry schema. When the Author / Person schema setting is on, an author's archive page emits a ProfilePage block (the archive URL itself) and the Person it showcases, linked by `mainEntity`. Previously this page carried only a breadcrumb — reasonable for a category archive, surprising on a page that is literally about one Person. Singular posts and other archive pages are unchanged. Safe update.
+
 = 1.3.3 =
 Fix: the block-editor "Preview JSON-LD" panel now also shows the standalone Author / Person block when the Author / Person schema setting is enabled. Previously the preview only rendered the primary (Article / Product) block, so ticking the Author / Person checkbox in Settings looked like it did nothing — even though the schema was correctly emitted in the published page's `<head>`. Frontend output was always correct; only the admin preview was misleading. Safe update.
 
@@ -313,6 +316,11 @@ Fixes page-builder and ACF pages being scored as empty across six readiness chec
 Conflict detection now respects your SEO plugin's own schema settings, and custom post type coverage saves reliably. Recommended update.
 
 == Changelog ==
+
+= 1.3.4 =
+
+* **Fix: author archive pages now emit ProfilePage + Person schema.** When the Author / Person schema setting is enabled, `/author/{username}/` now carries a ProfilePage block whose `mainEntity` references the Person for the showcased author, plus the Person block itself. Previously, author archives rendered only a breadcrumb — the author-archive branch was absent from `AEOMATIC_Schema::output()`, so a site owner who ticked the Author / Person checkbox and looked at their author profile page saw nothing Person-related. Singular posts, the home page, category / tag / taxonomy archives, and all other page types are unchanged.
+* New `AEOMATIC_Schema::profile_page_schema( WP_User, array )` builds the ProfilePage node (private). Reuses the existing `author_schema()` for the Person body, so author bio, sameAs profiles, jobTitle, worksFor, hasCredential, alumniOf, award and knowsAbout custom-user-meta fields appear in the archive-page Person just as they do on singular posts.
 
 = 1.3.3 =
 
